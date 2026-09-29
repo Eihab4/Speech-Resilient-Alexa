@@ -91,38 +91,7 @@ Hello from Speech-Resilient Alexa!
 
 If you get this result, the MCP server is working correctly.
 
-## Current MCP Tools
 
-| Tool                   | Status  | Purpose                        |
-| ---------------------- | ------- | ------------------------------ |
-| `hello_world`          | Done    | Verify MCP server connectivity |
-| `understand_speech`    | Next    | Understand fragmented speech   |
-| `do_confirmed_request` | Planned | Execute a confirmed request    |
-| `cancel_request`       | Planned | Cancel a pending request       |
-| `resume_unfinished`    | Planned | Resume an unfinished request   |
-| `remember_word`        | Later   | Store personal shortcuts       |
-
-## Development Flow
-
-The current development order is:
-
-```text
-MCP Server
-    ↓
-hello_world
-    ↓
-understand_speech
-    ↓
-Fake Brain
-    ↓
-Bedrock Brain
-    ↓
-Actions + Confirmation
-    ↓
-Memory
-    ↓
-Agent + Simulator
-```
 
 ### Important
 
