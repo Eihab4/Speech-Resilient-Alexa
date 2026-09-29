@@ -1,6 +1,27 @@
-# Memory Design
+# Memory
 
 How our Alexa remembers what a person said, without getting slower as the conversation grows.
+
+```mermaid
+flowchart LR
+    subgraph DB["SQLite, per person"]
+        R["Request in progress"]
+        H["Recent messages"]
+        SU["Summary of older chat"]
+        AL["Action log"]
+        PW["Personal words"]
+    end
+
+    R --> CB["Context builder"]
+    SU --> CB
+    H --> CB
+    PW -->|"only matching ones"| CB
+    CB --> AI["What the AI sees this turn"]
+
+    H -.->|"too long: oldest finished part,<br/>in the background after the reply"| SM["Summarizer"]
+    SM -.-> SU
+    AL --> XR["X-ray panel and<br/>'did you send it?'"]
+```
 
 ## The problem
 
@@ -59,6 +80,18 @@ Shortcuts the person teaches Alexa, like "my pills" meaning blood pressure medic
 4. Any personal words that match what was just said.
 
 Contacts ("mom", "my sister") come from the demo profile file, not from memory.
+
+## Tables
+
+| Table | One row is | Key columns |
+| --- | --- | --- |
+| `requests` | The request in progress for one person | `user_id`, `pending_id`, `pieces`, `state`, `status`, `updated_at` |
+| `messages` | One message in the history | `user_id`, `role`, `text`, `created_at` |
+| `summaries` | The running summary for one person | `user_id`, `text`, `updated_at` |
+| `actions` | One thing Alexa did | `user_id`, `task`, `details`, `created_at` |
+| `personal_words` | One shortcut | `user_id`, `phrase`, `meaning` |
+
+The request in progress and the unfinished request are the same row. It's unfinished simply because the app closed before it was done, and `updated_at` tells us when it expires.
 
 ## Settings
 
