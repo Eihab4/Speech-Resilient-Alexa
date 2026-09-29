@@ -1,11 +1,12 @@
 from fastmcp import FastMCP
+from tools.understand_speech import understand
 
 mcp = FastMCP("speech-resilient-alexa")
 
 
 @mcp.tool()
-def hello_world() -> str:
-    return "Hello from Speech-Resilient Alexa!"
+def understand_speech(user_id: str, heard: str) -> dict:
+    return understand(user_id, heard)
 
 
 if __name__ == "__main__":
