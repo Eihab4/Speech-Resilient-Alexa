@@ -13,11 +13,15 @@ SYSTEM_PROMPT = (Path(__file__).parent / "prompts" / "understand_speech.txt").re
 class OpenRouterBrain:
     def __init__(self, settings: Settings | None = None) -> None:
         config = settings or get_settings()
-        if config.openrouter_api_key is None:
+        if not config.openrouter.api_key:
             raise ValueError("OPENROUTER_API_KEY is required for OpenRouter")
-        self._api_key = config.openrouter_api_key.get_secret_value()
-        self._model_id = config.openrouter_model_id
-        self._max_tokens = config.llm_max_tokens
+        self._api_key = config.openrouter.api_key.get_secret_value()
+        self._model_id = config.openrouter.model_id
+        self._max_tokens = config.llm.max_tokens
+        self._temperature = config.llm.temperature
+        self._url = config.openrouter.base_url
+        self._timeout = config.openrouter.timeout_seconds
+        self._title = config.openrouter.app_title
 
     def interpret(self, fragments: list[str]) -> BrainResult:
         payload = {
@@ -35,20 +39,20 @@ class OpenRouterBrain:
                 },
             },
             "max_tokens": self._max_tokens,
-            "temperature": 0,
+            "temperature": self._temperature,
         }
         request = Request(
-            "https://openrouter.ai/api/v1/chat/completions",
+            self._url,
             data=json.dumps(payload).encode(),
             headers={
                 "Authorization": f"Bearer {self._api_key}",
                 "Content-Type": "application/json",
-                "X-OpenRouter-Title": "Speech-Resilient Alexa",
+                "X-OpenRouter-Title": self._title,
             },
             method="POST",
         )
         try:
-            with urlopen(request, timeout=30) as response:
+            with urlopen(request, timeout=self._timeout) as response:
                 body = json.loads(response.read().decode())
         except HTTPError as error:
             detail = error.read().decode()

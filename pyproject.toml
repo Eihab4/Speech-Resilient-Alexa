@@ -9,3 +9,12 @@ dependencies = [
     "pydantic>=2.13.5",
     "pydantic-settings>=2.15.0",
 ]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1",
+]
+
+[tool.pytest.ini_options]
+pythonpath = ["mcp-server", "tests"]
+testpaths = ["tests"]
