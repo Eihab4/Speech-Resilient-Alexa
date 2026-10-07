@@ -1,14 +1,11 @@
 import json
-from pathlib import Path
 
 import boto3
 
 from brain.schemas import BrainResult
 from config import Settings, get_settings
 from enums import ChatRole
-
-
-SYSTEM_PROMPT = (Path(__file__).parent / "prompts" / "understand_speech.txt").read_text()
+from messages import Prompt
 
 
 class BedrockBrain:
@@ -22,7 +19,7 @@ class BedrockBrain:
     def interpret(self, fragments: list[str]) -> BrainResult:
         response = self._client.converse(
             modelId=self._model_id,
-            system=[{"text": SYSTEM_PROMPT}],
+            system=[{"text": Prompt.UNDERSTAND_SPEECH.text}],
             messages=[
                 {
                     "role": ChatRole.USER,
