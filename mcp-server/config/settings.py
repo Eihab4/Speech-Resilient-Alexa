@@ -1,9 +1,10 @@
 from functools import lru_cache
 from pathlib import Path
-from typing import Literal
 
 from pydantic import AliasChoices, BaseModel, Field, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+from enums import LlmProvider
 
 ENV_FILE = Path(__file__).resolve().parents[2] / ".env"
 
@@ -25,7 +26,7 @@ class ServerSettings(Section):
 class LlmSettings(Section):
     model_config = SettingsConfigDict(env_prefix="LLM_")
 
-    provider: Literal["bedrock", "openrouter"] = "openrouter"
+    provider: LlmProvider = LlmProvider.OPENROUTER
     max_tokens: int = 300
     temperature: float = 0
 

@@ -5,6 +5,7 @@ import boto3
 
 from brain.schemas import BrainResult
 from config import Settings, get_settings
+from enums import ChatRole
 
 
 SYSTEM_PROMPT = (Path(__file__).parent / "prompts" / "understand_speech.txt").read_text()
@@ -24,7 +25,7 @@ class BedrockBrain:
             system=[{"text": SYSTEM_PROMPT}],
             messages=[
                 {
-                    "role": "user",
+                    "role": ChatRole.USER,
                     "content": [{"text": json.dumps({"fragments": fragments})}],
                 }
             ],

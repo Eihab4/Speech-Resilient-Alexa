@@ -5,6 +5,7 @@ from urllib.request import Request, urlopen
 
 from brain.schemas import BrainResult
 from config import Settings, get_settings
+from enums import ChatRole
 
 
 SYSTEM_PROMPT = (Path(__file__).parent / "prompts" / "understand_speech.txt").read_text()
@@ -27,8 +28,8 @@ class OpenRouterBrain:
         payload = {
             "model": self._model_id,
             "messages": [
-                {"role": "system", "content": SYSTEM_PROMPT},
-                {"role": "user", "content": json.dumps({"fragments": fragments})},
+                {"role": ChatRole.SYSTEM, "content": SYSTEM_PROMPT},
+                {"role": ChatRole.USER, "content": json.dumps({"fragments": fragments})},
             ],
             "response_format": {
                 "type": "json_schema",
