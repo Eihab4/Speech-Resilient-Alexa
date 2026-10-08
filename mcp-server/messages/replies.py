@@ -11,6 +11,8 @@ class Reply(StrEnum):
     NOTHING_PENDING = "There's nothing waiting right now."
     CANCELLED = "Okay, cancelled."
     DONE = "Done. {result}"
+    RESUME = "You didn't finish your {intent} last time. Want to pick it up?"
+    GENERIC_INTENT = "request"
 
 
 ACTION_RESULTS = {

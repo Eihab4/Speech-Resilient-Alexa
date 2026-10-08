@@ -5,13 +5,14 @@ from pathlib import Path
 
 from enums import RequestStatus
 from memory.models import Action, Request, Turn
-from utils import utc_now
+from utils import hours_ago, utc_now
 
 SCHEMA = (Path(__file__).parent / "schema.sql").read_text()
 
 
 class SqliteMemoryStore:
-    def __init__(self, db_path: Path) -> None:
+    def __init__(self, db_path: Path, unfinished_ttl_hours: float = 24) -> None:
+        self._ttl_hours = unfinished_ttl_hours
         db_path.parent.mkdir(parents=True, exist_ok=True)
         self._db = sqlite3.connect(db_path, autocommit=True, check_same_thread=False)
         self._db.row_factory = sqlite3.Row
@@ -78,8 +79,8 @@ class SqliteMemoryStore:
     def pending_request(self, conversation_id: int) -> Request | None:
         row = self._db.execute(
             "SELECT id, intent, details, status, updated_at FROM requests "
-            "WHERE conversation_id = ? AND status IN (?, ?) ORDER BY updated_at DESC LIMIT 1",
-            (conversation_id, RequestStatus.PENDING, RequestStatus.CONFIRMED),
+            "WHERE conversation_id = ? AND status IN (?, ?) AND updated_at >= ? ORDER BY updated_at DESC LIMIT 1",
+            (conversation_id, RequestStatus.PENDING, RequestStatus.CONFIRMED, hours_ago(self._ttl_hours)),
         ).fetchone()
         return self._request(row)
 

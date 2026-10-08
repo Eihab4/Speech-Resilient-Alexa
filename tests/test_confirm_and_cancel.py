@@ -141,5 +141,5 @@ def test_every_tool_tells_the_agent_when_to_use_it(server):
 
     tools = with_client(server(), descriptions)
 
-    assert set(tools) == {"understand_speech", "do_confirmed_request", "cancel_request"}
+    assert set(tools) == {"understand_speech", "do_confirmed_request", "cancel_request", "resume_unfinished"}
     assert all(description for description in tools.values())

@@ -12,3 +12,7 @@ class ToolDescription(StrEnum):
         "next_move done for this pending_id."
     )
     CANCEL_REQUEST = "Drop the request in progress when the person says to stop or never mind."
+    RESUME_UNFINISHED = (
+        "Call this once when a session starts. Returns a request the person left unfinished last time, "
+        "so you can offer to pick it up instead of making them start over."
+    )

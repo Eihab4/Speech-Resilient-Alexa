@@ -18,6 +18,19 @@
       "next_move": "ask",
       "say": "What time?"
     },
+    "remind pills": {
+      "intent": "reminder",
+      "details": {"what": "pills"},
+      "next_move": "ask",
+      "say": "What time?"
+    },
+    "remind pills eight": {
+      "intent": "reminder",
+      "details": {"what": "pills", "when": "8:00"},
+      "assumptions": ["eight means 8 AM"],
+      "next_move": "confirm",
+      "say": "Should I set a reminder for your pills at 8 AM?"
+    },
     "call sara": {
       "intent": "call",
       "details": {"who": "Sara"},

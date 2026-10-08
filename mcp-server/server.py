@@ -7,6 +7,7 @@ from memory import SqliteMemoryStore
 from messages import ToolDescription
 from tools.cancel_request import cancel_request as cancel
 from tools.do_confirmed_request import do_confirmed_request as do_confirmed
+from tools.resume_unfinished import resume_unfinished as resume
 from tools.understand_speech import understand
 
 settings = get_settings()
@@ -14,7 +15,7 @@ settings = get_settings()
 
 @lifespan
 async def resources(server: FastMCP):
-    store = SqliteMemoryStore(settings.memory.db_path)
+    store = SqliteMemoryStore(settings.memory.db_path, settings.memory.unfinished_ttl_hours)
     yield {"brain": create_brain(settings), "store": store}
     store.close()
 
@@ -31,6 +32,11 @@ def understand_speech(user_id: str, heard: str, ctx: Context) -> dict:
 @mcp.tool(description=ToolDescription.DO_CONFIRMED_REQUEST)
 def do_confirmed_request(user_id: str, pending_id: str, ctx: Context) -> dict:
     return do_confirmed(ctx.lifespan_context["store"], settings.memory.company_id, user_id, pending_id)
+
+
+@mcp.tool(description=ToolDescription.RESUME_UNFINISHED)
+def resume_unfinished(user_id: str, ctx: Context) -> dict:
+    return resume(ctx.lifespan_context["store"], settings.memory.company_id, user_id)
 
 
 @mcp.tool(description=ToolDescription.CANCEL_REQUEST)
