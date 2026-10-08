@@ -18,6 +18,12 @@
       "next_move": "ask",
       "say": "What time?"
     },
+    "call sara": {
+      "intent": "call",
+      "details": {"who": "Sara"},
+      "next_move": "confirm",
+      "say": "Call Sara?"
+    },
     "call mom": {
       "intent": "call",
       "details": {"who": "mom"},

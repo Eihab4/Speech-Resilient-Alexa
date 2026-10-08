@@ -1,8 +1,8 @@
 from brain.base import Brain
 from brain.schemas import BrainResult
-from enums import NextMove
+from enums import NextMove, RequestStatus
 from memory import MemoryStore, Request, Turn
-from messages import Reply
+from messages import NO_WORDS, YES_WORDS, Reply
 
 
 def understand(brain: Brain, store: MemoryStore, company_id: str, user_id: str, heard: str) -> dict:
@@ -12,11 +12,24 @@ def understand(brain: Brain, store: MemoryStore, company_id: str, user_id: str, 
 
     conversation = store.conversation_for(company_id, user_id)
     request = store.pending_request(conversation) or Request()
-    pieces = [turn.heard for turn in store.turns(conversation, request.id)] + [fragment]
-    result = brain.interpret(pieces)
+    earlier = store.turns(conversation, request.id)
+    awaiting_yes = bool(earlier) and earlier[-1].next_move == NextMove.CONFIRM
 
-    store.save_request(conversation, request.model_copy(update={"intent": result.intent, "details": result.details}))
+    if awaiting_yes and fragment.lower() in YES_WORDS:
+        request = request.model_copy(update={"status": RequestStatus.CONFIRMED})
+        result = BrainResult(
+            intent=request.intent, details=request.details, next_move=NextMove.DONE, say=Reply.CONFIRMED
+        )
+    elif awaiting_yes and fragment.lower() in NO_WORDS:
+        result = BrainResult(
+            intent=request.intent, details=request.details, next_move=NextMove.ASK, say=Reply.WHAT_TO_CHANGE
+        )
+    else:
+        result = brain.interpret([turn.heard for turn in earlier] + [fragment])
+        request = request.model_copy(update={"intent": result.intent, "details": result.details})
+
+    store.save_request(conversation, request)
     store.add_turn(
         conversation, Turn(request_id=request.id, heard=fragment, say=result.say, next_move=result.next_move)
     )
-    return result.model_dump()
+    return {**result.model_dump(), "pending_id": request.id}

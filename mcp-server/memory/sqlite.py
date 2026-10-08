@@ -81,6 +81,17 @@ class SqliteMemoryStore:
             "WHERE conversation_id = ? AND status IN (?, ?) ORDER BY updated_at DESC LIMIT 1",
             (conversation_id, RequestStatus.PENDING, RequestStatus.CONFIRMED),
         ).fetchone()
+        return self._request(row)
+
+    def request(self, conversation_id: int, request_id: str) -> Request | None:
+        row = self._db.execute(
+            "SELECT id, intent, details, status, updated_at FROM requests WHERE conversation_id = ? AND id = ?",
+            (conversation_id, request_id),
+        ).fetchone()
+        return self._request(row)
+
+    @staticmethod
+    def _request(row: sqlite3.Row | None) -> Request | None:
         return Request(**{**row, "details": json.loads(row["details"])}) if row else None
 
     def log_action(self, request_id: str, result: str) -> Action:
