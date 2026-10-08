@@ -30,9 +30,10 @@ def wait_until_listening(process: subprocess.Popen, port: int, timeout: float = 
     raise TimeoutError(f"server did not listen on port {port}")
 
 
-def start_server(path: str = "/mcp", **env: str) -> tuple[subprocess.Popen, str]:
+def start_server(path: str = "/mcp", **env: str | None) -> tuple[subprocess.Popen, str]:
     port = free_port()
-    variables = {**os.environ, "MCP_HOST": "127.0.0.1", "MCP_PORT": str(port), "MCP_PATH": path, **env}
+    overrides = {"MCP_HOST": "127.0.0.1", "MCP_PORT": str(port), "MCP_PATH": path, **env}
+    variables = {key: value for key, value in {**os.environ, **overrides}.items() if value is not None}
     process = subprocess.Popen(
         [sys.executable, str(SERVER_SCRIPT)],
         env=variables,

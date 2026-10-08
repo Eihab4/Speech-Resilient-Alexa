@@ -1,0 +1,51 @@
+{
+  "answers": {
+    "tomorrow": {
+      "intent": "reminder",
+      "next_move": "listen",
+      "say": "Mm-hm, go on."
+    },
+    "tomorrow doctor ten": {
+      "intent": "reminder",
+      "details": {"what": "doctor appointment", "when": "tomorrow 10:00"},
+      "assumptions": ["ten means 10 AM"],
+      "next_move": "confirm",
+      "say": "Should I set a reminder for your doctor appointment tomorrow at 10 AM?"
+    },
+    "doctor": {
+      "intent": "reminder",
+      "details": {"what": "doctor appointment"},
+      "next_move": "ask",
+      "say": "What time?"
+    },
+    "call mom": {
+      "intent": "call",
+      "details": {"who": "mom"},
+      "next_move": "confirm",
+      "say": "Call Mom?"
+    },
+    "call sara no mom": {
+      "intent": "call",
+      "details": {"who": "mom"},
+      "changed": ["who"],
+      "next_move": "confirm",
+      "say": "Call Mom instead?"
+    },
+    "message ahmed": {
+      "intent": "message",
+      "details": {"who": "Ahmed"},
+      "next_move": "ask",
+      "say": "What should it say?"
+    },
+    "message ahmed running late": {
+      "intent": "message",
+      "details": {"who": "Ahmed", "text": "running late"},
+      "next_move": "confirm",
+      "say": "Send Ahmed: running late?"
+    }
+  },
+  "fallback": {
+    "next_move": "ask",
+    "say": "What would you like me to do?"
+  }
+}

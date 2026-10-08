@@ -45,7 +45,7 @@ def test_unknown_provider_is_rejected(monkeypatch):
 def test_env_example_lists_every_setting():
     example = (Path(__file__).resolve().parents[1] / ".env.example").read_text()
     sections = Settings().model_dump()
-    prefixes = {"server": "MCP_", "llm": "LLM_", "bedrock": "BEDROCK_", "openrouter": "OPENROUTER_"}
+    prefixes = {"server": "MCP_", "llm": "LLM_", "mock": "MOCK_", "bedrock": "BEDROCK_", "openrouter": "OPENROUTER_"}
     aliases = {("bedrock", "region"): "AWS_REGION"}
 
     for section, fields in sections.items():

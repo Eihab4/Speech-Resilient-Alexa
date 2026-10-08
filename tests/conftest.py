@@ -7,7 +7,7 @@ from support import start_server
 def server():
     processes = []
 
-    def start(path: str = "/mcp", **env: str) -> str:
+    def start(path: str = "/mcp", **env: str | None) -> str:
         process, url = start_server(path, **env)
         processes.append(process)
         return url
