@@ -3,7 +3,7 @@ import sqlite3
 import pytest
 
 from enums import NextMove, RequestStatus
-from memory import Request, SqliteMemoryStore
+from memory import Request, SqliteMemoryStore, Turn
 
 
 @pytest.fixture
@@ -21,7 +21,7 @@ def store(db_path):
 def test_turns_come_back_in_the_order_they_were_said(store):
     conversation = store.start_conversation("acme", "u1")
     for heard in ["tomorrow", "doctor ten", "yes"]:
-        store.add_turn(conversation, heard, "ok", NextMove.LISTEN)
+        store.add_turn(conversation, Turn(heard=heard, say="ok", next_move=NextMove.LISTEN))
 
     assert [turn.heard for turn in store.turns(conversation)] == ["tomorrow", "doctor ten", "yes"]
     assert [turn.seq for turn in store.turns(conversation)] == [1, 2, 3]
@@ -30,7 +30,7 @@ def test_turns_come_back_in_the_order_they_were_said(store):
 def test_memory_survives_closing_and_reopening_the_file(db_path):
     first = SqliteMemoryStore(db_path)
     conversation = first.start_conversation("acme", "u1")
-    first.add_turn(conversation, "remind pills", "What time?", NextMove.ASK)
+    first.add_turn(conversation, Turn(heard="remind pills", say="What time?", next_move=NextMove.ASK))
     first.save_request(conversation, Request(intent="reminder", details={"what": "pills"}))
     first.close()
 
@@ -43,7 +43,7 @@ def test_memory_survives_closing_and_reopening_the_file(db_path):
 def test_same_user_id_in_two_companies_never_shares_a_conversation(store):
     acme = store.start_conversation("acme", "u1")
     globex = store.start_conversation("globex", "u1")
-    store.add_turn(acme, "call mom", "Call Mom?", NextMove.CONFIRM)
+    store.add_turn(acme, Turn(heard="call mom", say="Call Mom?", next_move=NextMove.CONFIRM))
 
     assert acme != globex
     assert store.turns(globex) == []
@@ -51,7 +51,7 @@ def test_same_user_id_in_two_companies_never_shares_a_conversation(store):
 
 def test_a_turn_cannot_belong_to_a_missing_conversation(store):
     with pytest.raises(sqlite3.IntegrityError):
-        store.add_turn(999, "hello", "hi", NextMove.LISTEN)
+        store.add_turn(999, Turn(heard="hello", say="hi", next_move=NextMove.LISTEN))
 
 
 def test_saving_the_same_request_again_updates_it_in_place(store):
@@ -93,3 +93,22 @@ def test_a_failed_conversation_start_leaves_nothing_behind(store, db_path, monke
 
     with sqlite3.connect(db_path) as db:
         assert db.execute("SELECT COUNT(*) FROM companies").fetchone()[0] == 0
+
+
+def test_turns_can_be_filtered_to_one_request(store):
+    conversation = store.start_conversation("acme", "u1")
+    old, current = Request(intent="call"), Request(intent="reminder")
+    for request in [old, current]:
+        store.save_request(conversation, request)
+    store.add_turn(conversation, Turn(request_id=old.id, heard="call mom", say="Call Mom?", next_move=NextMove.CONFIRM))
+    store.add_turn(conversation, Turn(request_id=current.id, heard="tomorrow", say="Go on.", next_move=NextMove.LISTEN))
+
+    assert [turn.heard for turn in store.turns(conversation, current.id)] == ["tomorrow"]
+    assert len(store.turns(conversation)) == 2
+
+
+def test_conversation_for_reuses_the_latest_one(store):
+    first = store.conversation_for("acme", "u1")
+
+    assert store.conversation_for("acme", "u1") == first
+    assert store.conversation_for("acme", "u2") != first

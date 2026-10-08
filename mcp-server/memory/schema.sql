@@ -15,17 +15,6 @@ CREATE TABLE IF NOT EXISTS conversations (
     started_at TEXT NOT NULL
 );
 
-CREATE TABLE IF NOT EXISTS turns (
-    id INTEGER PRIMARY KEY,
-    conversation_id INTEGER NOT NULL REFERENCES conversations(id),
-    seq INTEGER NOT NULL,
-    heard TEXT NOT NULL,
-    say TEXT NOT NULL,
-    next_move TEXT NOT NULL,
-    created_at TEXT NOT NULL,
-    UNIQUE (conversation_id, seq)
-);
-
 CREATE TABLE IF NOT EXISTS requests (
     id TEXT PRIMARY KEY,
     conversation_id INTEGER NOT NULL REFERENCES conversations(id),
@@ -33,6 +22,18 @@ CREATE TABLE IF NOT EXISTS requests (
     details TEXT NOT NULL,
     status TEXT NOT NULL,
     updated_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS turns (
+    id INTEGER PRIMARY KEY,
+    conversation_id INTEGER NOT NULL REFERENCES conversations(id),
+    request_id TEXT REFERENCES requests(id),
+    seq INTEGER NOT NULL,
+    heard TEXT NOT NULL,
+    say TEXT NOT NULL,
+    next_move TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    UNIQUE (conversation_id, seq)
 );
 
 CREATE TABLE IF NOT EXISTS actions (

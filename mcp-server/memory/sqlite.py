@@ -3,7 +3,7 @@ import sqlite3
 from contextlib import contextmanager
 from pathlib import Path
 
-from enums import NextMove, RequestStatus
+from enums import RequestStatus
 from memory.models import Action, Request, Turn
 from utils import utc_now
 
@@ -42,19 +42,28 @@ class SqliteMemoryStore:
             ).fetchone()
         return row["id"]
 
-    def add_turn(self, conversation_id: int, heard: str, say: str, next_move: NextMove) -> Turn:
+    def conversation_for(self, company_id: str, user_id: str) -> int:
         row = self._db.execute(
-            "INSERT INTO turns (conversation_id, seq, heard, say, next_move, created_at) VALUES "
-            "(?, (SELECT COALESCE(MAX(seq), 0) + 1 FROM turns WHERE conversation_id = ?), ?, ?, ?, ?) "
-            "RETURNING seq, heard, say, next_move, created_at",
-            (conversation_id, conversation_id, heard, say, next_move, utc_now()),
+            "SELECT c.id FROM conversations c JOIN users u ON u.id = c.user_id "
+            "WHERE u.company_id = ? AND u.external_id = ? ORDER BY c.id DESC LIMIT 1",
+            (company_id, user_id),
+        ).fetchone()
+        return row["id"] if row else self.start_conversation(company_id, user_id)
+
+    def add_turn(self, conversation_id: int, turn: Turn) -> Turn:
+        row = self._db.execute(
+            "INSERT INTO turns (conversation_id, request_id, seq, heard, say, next_move, created_at) VALUES "
+            "(?, ?, (SELECT COALESCE(MAX(seq), 0) + 1 FROM turns WHERE conversation_id = ?), ?, ?, ?, ?) "
+            "RETURNING seq, request_id, heard, say, next_move, created_at",
+            (conversation_id, turn.request_id, conversation_id, turn.heard, turn.say, turn.next_move, turn.created_at),
         ).fetchone()
         return Turn(**row)
 
-    def turns(self, conversation_id: int) -> list[Turn]:
+    def turns(self, conversation_id: int, request_id: str | None = None) -> list[Turn]:
         rows = self._db.execute(
-            "SELECT seq, heard, say, next_move, created_at FROM turns WHERE conversation_id = ? ORDER BY seq",
-            (conversation_id,),
+            "SELECT seq, request_id, heard, say, next_move, created_at FROM turns "
+            "WHERE conversation_id = ? AND (? IS NULL OR request_id = ?) ORDER BY seq",
+            (conversation_id, request_id, request_id),
         )
         return [Turn(**row) for row in rows]
 

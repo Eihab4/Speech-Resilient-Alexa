@@ -1,7 +1,5 @@
 import json
 
-import pytest
-
 from brain.mock import MockAnswers
 from brain.schemas import BrainResult
 from config import Settings
@@ -49,7 +47,10 @@ def test_recordings_are_valid_results_and_cover_the_demo_scenarios():
 
 
 def test_recordings_match_input_case_and_spacing(server, tmp_path):
-    answers = {"answers": {"call mom": {"next_move": "confirm", "say": "Call Mom?"}}, "fallback": {"next_move": "ask", "say": "?"}}
+    answers = {
+        "answers": {"call mom": {"next_move": "confirm", "say": "Call Mom?"}},
+        "fallback": {"next_move": "ask", "say": "?"},
+    }
     path = tmp_path / "answers.json"
     path.write_text(json.dumps(answers))
     url = server(MOCK_ANSWERS_PATH=str(path), **NO_KEYS)

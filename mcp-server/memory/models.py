@@ -7,11 +7,12 @@ from utils import new_id, utc_now
 
 
 class Turn(BaseModel):
-    seq: int
+    seq: int = 0
+    request_id: str | None = None
     heard: str
     say: str
     next_move: NextMove
-    created_at: str
+    created_at: str = Field(default_factory=utc_now)
 
 
 class Request(BaseModel):

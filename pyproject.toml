@@ -13,8 +13,19 @@ dependencies = [
 [dependency-groups]
 dev = [
     "pytest>=9.1.1",
+    "ruff>=0.16.10",
 ]
 
 [tool.pytest.ini_options]
 pythonpath = ["mcp-server", "tests"]
 testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 120
+src = ["mcp-server", "tests"]
+
+[tool.ruff.lint]
+extend-select = ["I"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["brain", "config", "enums", "memory", "messages", "tools", "utils", "support"]

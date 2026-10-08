@@ -42,6 +42,7 @@ class MemorySettings(Section):
     model_config = SettingsConfigDict(env_prefix="MEMORY_")
 
     db_path: Path = PROJECT_ROOT / "data" / "memory.db"
+    company_id: str = "demo"
 
 
 class BedrockSettings(Section):
