@@ -23,6 +23,11 @@ class Request(BaseModel):
     updated_at: str = Field(default_factory=utc_now)
 
 
+class Summary(BaseModel):
+    text: str = ""
+    covers_up_to_seq: int = 0
+
+
 class Action(BaseModel):
     request_id: str
     result: str

@@ -36,6 +36,13 @@ CREATE TABLE IF NOT EXISTS turns (
     UNIQUE (conversation_id, seq)
 );
 
+CREATE TABLE IF NOT EXISTS summaries (
+    conversation_id INTEGER PRIMARY KEY REFERENCES conversations(id),
+    text TEXT NOT NULL,
+    covers_up_to_seq INTEGER NOT NULL,
+    updated_at TEXT NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS actions (
     id INTEGER PRIMARY KEY,
     request_id TEXT NOT NULL REFERENCES requests(id),

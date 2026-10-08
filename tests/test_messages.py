@@ -1,6 +1,7 @@
 import pytest
 
-from brain.openrouter import OpenRouterBrain
+from brain.interpreter import LlmBrain
+from brain.llm import OpenRouterClient
 from config import Settings
 from enums import NextMove
 from messages import ErrorMessage, Prompt, Reply
@@ -17,7 +18,7 @@ def test_missing_openrouter_key_uses_the_central_message(monkeypatch):
     monkeypatch.setenv("OPENROUTER_API_KEY", "")
 
     with pytest.raises(ValueError, match=ErrorMessage.OPENROUTER_KEY_MISSING):
-        OpenRouterBrain(Settings())
+        OpenRouterClient(Settings())
 
 
 def test_rejected_openrouter_key_uses_the_central_message(monkeypatch):
@@ -25,7 +26,7 @@ def test_rejected_openrouter_key_uses_the_central_message(monkeypatch):
     prefix = ErrorMessage.OPENROUTER_REQUEST_FAILED.split("{")[0]
 
     with pytest.raises(RuntimeError, match=f"^{prefix}"):
-        OpenRouterBrain(Settings()).interpret(["call mom"])
+        LlmBrain(OpenRouterClient(Settings())).interpret(["call mom"])
 
 
 def test_blank_speech_gets_the_central_reply_over_mcp(server):
@@ -43,7 +44,7 @@ def test_blank_speech_gets_the_central_reply_over_mcp(server):
 
 @pytest.mark.skipif(not Settings().openrouter.api_key, reason="needs OPENROUTER_API_KEY")
 def test_real_llm_answers_with_the_central_prompt():
-    result = OpenRouterBrain(Settings()).interpret(["tomorrow", "doctor", "ten"])
+    result = LlmBrain(OpenRouterClient(Settings())).interpret(["tomorrow", "doctor", "ten"])
 
     assert result.next_move in NextMove
     assert result.say

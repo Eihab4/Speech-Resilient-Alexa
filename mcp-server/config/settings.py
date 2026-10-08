@@ -44,6 +44,8 @@ class MemorySettings(Section):
     db_path: Path = PROJECT_ROOT / "data" / "memory.db"
     company_id: str = "demo"
     unfinished_ttl_hours: float = 24
+    recent_messages: int = 10
+    summary_trigger_words: int = 400
 
 
 class BedrockSettings(Section):

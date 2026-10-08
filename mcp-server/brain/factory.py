@@ -1,17 +1,30 @@
 from brain.base import Brain
-from brain.bedrock import BedrockBrain
+from brain.interpreter import LlmBrain
+from brain.llm import BedrockClient, LlmClient, OpenRouterClient
 from brain.mock import MockBrain
-from brain.openrouter import OpenRouterBrain
+from brain.summarizer import LlmSummarizer, MockSummarizer, Summarizer
 from config import Settings, get_settings
 from enums import LlmProvider
 
-BRAINS = {
-    LlmProvider.BEDROCK: BedrockBrain,
-    LlmProvider.OPENROUTER: OpenRouterBrain,
-    LlmProvider.MOCK: MockBrain,
+CLIENTS = {
+    LlmProvider.BEDROCK: BedrockClient,
+    LlmProvider.OPENROUTER: OpenRouterClient,
 }
+
+
+def create_client(settings: Settings) -> LlmClient:
+    return CLIENTS[settings.llm.provider](settings)
 
 
 def create_brain(settings: Settings | None = None) -> Brain:
     config = settings or get_settings()
-    return BRAINS[config.llm.provider](config)
+    if config.llm.provider == LlmProvider.MOCK:
+        return MockBrain(config)
+    return LlmBrain(create_client(config))
+
+
+def create_summarizer(settings: Settings | None = None) -> Summarizer:
+    config = settings or get_settings()
+    if config.llm.provider == LlmProvider.MOCK:
+        return MockSummarizer(config.memory.summary_trigger_words)
+    return LlmSummarizer(create_client(config))

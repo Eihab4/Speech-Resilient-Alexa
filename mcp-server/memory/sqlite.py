@@ -4,7 +4,7 @@ from contextlib import contextmanager
 from pathlib import Path
 
 from enums import RequestStatus
-from memory.models import Action, Request, Turn
+from memory.models import Action, Request, Summary, Turn
 from utils import hours_ago, utc_now
 
 SCHEMA = (Path(__file__).parent / "schema.sql").read_text()
@@ -67,6 +67,29 @@ class SqliteMemoryStore:
             (conversation_id, request_id, request_id),
         )
         return [Turn(**row) for row in rows]
+
+    def finished_turns(self, conversation_id: int, after_seq: int) -> list[Turn]:
+        rows = self._db.execute(
+            "SELECT t.seq, t.request_id, t.heard, t.say, t.next_move, t.created_at FROM turns t "
+            "JOIN requests r ON r.id = t.request_id "
+            "WHERE t.conversation_id = ? AND t.seq > ? AND r.status IN (?, ?) ORDER BY t.seq",
+            (conversation_id, after_seq, RequestStatus.DONE, RequestStatus.CANCELLED),
+        )
+        return [Turn(**row) for row in rows]
+
+    def summary(self, conversation_id: int) -> Summary:
+        row = self._db.execute(
+            "SELECT text, covers_up_to_seq FROM summaries WHERE conversation_id = ?", (conversation_id,)
+        ).fetchone()
+        return Summary(**row) if row else Summary()
+
+    def save_summary(self, conversation_id: int, summary: Summary) -> None:
+        self._db.execute(
+            "INSERT INTO summaries (conversation_id, text, covers_up_to_seq, updated_at) VALUES (?, ?, ?, ?) "
+            "ON CONFLICT (conversation_id) DO UPDATE SET text = excluded.text, "
+            "covers_up_to_seq = excluded.covers_up_to_seq, updated_at = excluded.updated_at",
+            (conversation_id, summary.text, summary.covers_up_to_seq, utc_now()),
+        )
 
     def save_request(self, conversation_id: int, request: Request) -> None:
         self._db.execute(

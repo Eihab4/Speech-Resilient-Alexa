@@ -1,9 +1,9 @@
 from fastmcp import Context, FastMCP
 from fastmcp.server.lifespan import lifespan
 
-from brain.factory import create_brain
+from brain.factory import create_brain, create_summarizer
 from config import get_settings
-from memory import SqliteMemoryStore
+from memory import History, SqliteMemoryStore
 from messages import ToolDescription
 from tools.cancel_request import cancel_request as cancel
 from tools.do_confirmed_request import do_confirmed_request as do_confirmed
@@ -16,7 +16,10 @@ settings = get_settings()
 @lifespan
 async def resources(server: FastMCP):
     store = SqliteMemoryStore(settings.memory.db_path, settings.memory.unfinished_ttl_hours)
-    yield {"brain": create_brain(settings), "store": store}
+    history = History(
+        store, create_summarizer(settings), settings.memory.recent_messages, settings.memory.summary_trigger_words
+    )
+    yield {"brain": create_brain(settings), "store": store, "history": history}
     store.close()
 
 
@@ -25,8 +28,8 @@ mcp = FastMCP(settings.server.name, lifespan=resources)
 
 @mcp.tool(description=ToolDescription.UNDERSTAND_SPEECH)
 def understand_speech(user_id: str, heard: str, ctx: Context) -> dict:
-    resources = ctx.lifespan_context
-    return understand(resources["brain"], resources["store"], settings.memory.company_id, user_id, heard)
+    r = ctx.lifespan_context
+    return understand(r["brain"], r["store"], r["history"], settings.memory.company_id, user_id, heard)
 
 
 @mcp.tool(description=ToolDescription.DO_CONFIRMED_REQUEST)

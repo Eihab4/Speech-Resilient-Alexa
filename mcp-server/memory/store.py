@@ -1,6 +1,6 @@
 from typing import Protocol
 
-from memory.models import Action, Request, Turn
+from memory.models import Action, Request, Summary, Turn
 
 
 class MemoryStore(Protocol):
@@ -11,6 +11,12 @@ class MemoryStore(Protocol):
     def add_turn(self, conversation_id: int, turn: Turn) -> Turn: ...
 
     def turns(self, conversation_id: int, request_id: str | None = None) -> list[Turn]: ...
+
+    def finished_turns(self, conversation_id: int, after_seq: int) -> list[Turn]: ...
+
+    def summary(self, conversation_id: int) -> Summary: ...
+
+    def save_summary(self, conversation_id: int, summary: Summary) -> None: ...
 
     def save_request(self, conversation_id: int, request: Request) -> None: ...
 

@@ -14,6 +14,6 @@ class MockBrain:
         config = settings or get_settings()
         self._recorded = MockAnswers.model_validate_json(config.mock.answers_path.read_text())
 
-    def interpret(self, fragments: list[str]) -> BrainResult:
+    def interpret(self, fragments: list[str], history: str = "") -> BrainResult:
         key = " ".join(fragment.lower().strip() for fragment in fragments)
         return self._recorded.answers.get(key, self._recorded.fallback)
