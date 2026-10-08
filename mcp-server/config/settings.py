@@ -38,6 +38,12 @@ class MockSettings(Section):
     answers_path: Path = PROJECT_ROOT / "data" / "mock_answers.json"
 
 
+class MemorySettings(Section):
+    model_config = SettingsConfigDict(env_prefix="MEMORY_")
+
+    db_path: Path = PROJECT_ROOT / "data" / "memory.db"
+
+
 class BedrockSettings(Section):
     model_config = SettingsConfigDict(env_prefix="BEDROCK_")
 
@@ -62,6 +68,7 @@ class Settings(BaseModel):
     server: ServerSettings = Field(default_factory=ServerSettings)
     llm: LlmSettings = Field(default_factory=LlmSettings)
     mock: MockSettings = Field(default_factory=MockSettings)
+    memory: MemorySettings = Field(default_factory=MemorySettings)
     bedrock: BedrockSettings = Field(default_factory=BedrockSettings)
     openrouter: OpenRouterSettings = Field(default_factory=OpenRouterSettings)
 
