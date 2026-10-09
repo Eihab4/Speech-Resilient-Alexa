@@ -5,6 +5,7 @@ class NextMove(StrEnum):
     LISTEN = "listen"
     ASK = "ask"
     CONFIRM = "confirm"
+    CANCEL = "cancel"
     DONE = "done"
 
 
