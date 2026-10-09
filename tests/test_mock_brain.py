@@ -14,8 +14,8 @@ async def understand(client, heard):
     return result.structured_content
 
 
-def test_mock_is_the_default_provider(monkeypatch):
-    monkeypatch.delenv("LLM_PROVIDER", raising=False)
+def test_mock_provider_is_available_for_offline_tests(monkeypatch):
+    monkeypatch.setenv("LLM_PROVIDER", "mock")
 
     assert Settings().llm.provider == LlmProvider.MOCK
 

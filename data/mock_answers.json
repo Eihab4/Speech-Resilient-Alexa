@@ -12,6 +12,11 @@
       "next_move": "confirm",
       "say": "Should I set a reminder for your doctor appointment tomorrow at 10 AM?"
     },
+    "tomorrow never mind": {
+      "intent": "reminder",
+      "next_move": "cancel",
+      "say": "Okay, cancelled."
+    },
     "doctor": {
       "intent": "reminder",
       "details": {"what": "doctor appointment"},

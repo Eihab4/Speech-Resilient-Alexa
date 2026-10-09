@@ -27,7 +27,7 @@ class ServerSettings(Section):
 class LlmSettings(Section):
     model_config = SettingsConfigDict(env_prefix="LLM_")
 
-    provider: LlmProvider = LlmProvider.MOCK
+    provider: LlmProvider = LlmProvider.OPENROUTER
     max_tokens: int = 300
     temperature: float = 0
 

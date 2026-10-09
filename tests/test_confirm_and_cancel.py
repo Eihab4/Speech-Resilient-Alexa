@@ -123,6 +123,18 @@ def test_cancel_drops_the_request_and_the_next_words_start_fresh(server, db_path
     assert fresh["say"] == "What time?"
 
 
+def test_never_mind_tells_the_agent_to_cancel_then_clears_the_request(server, db_path):
+    url = server()
+    say(url, "tomorrow")
+
+    decision = say(url, "never mind")
+    cancelled = call(url, "cancel_request", user_id="u1")
+
+    assert decision["next_move"] == NextMove.CANCEL
+    assert cancelled == {"cancelled": True, "say": Reply.CANCELLED}
+    assert inspect(db_path)[0] is None
+
+
 def test_cancel_with_nothing_pending_says_so(server):
     assert call(server(), "cancel_request", user_id="u1") == {"cancelled": False, "say": Reply.NOTHING_PENDING}
 

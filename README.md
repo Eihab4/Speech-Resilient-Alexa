@@ -8,7 +8,7 @@ An Alexa+ add-on for people whose speech is slow, comes out in pieces, or needs 
 - Transport: **Streamable HTTP** at `http://127.0.0.1:8000/mcp`.
 - MCP spec: negotiates **2025-11-25 or later** (the test suite checks this).
 - Where MCP is imported and called: `mcp-server/server.py`.
-- Runs with **no AWS account and no API key**: the default `LLM_PROVIDER=mock` uses recorded answers.
+- Uses the real OpenRouter brain by default. Add `OPENROUTER_API_KEY` to `.env` before starting it.
 
 ## Run it
 
@@ -53,7 +53,7 @@ Everything is read from environment variables. `.env.example` lists every settin
 
 | Setting                        | What it controls                                                      |
 | ------------------------------ | --------------------------------------------------------------------- |
-| `LLM_PROVIDER`                 | `mock` (default, no key needed), `openrouter` or `bedrock`            |
+| `LLM_PROVIDER`                 | `openrouter` (default) or `bedrock`                                   |
 | `MEMORY_DB_PATH`               | The SQLite file that holds memory                                     |
 | `MEMORY_UNFINISHED_TTL_HOURS`  | How long an unfinished request is offered back                        |
 | `MEMORY_RECENT_MESSAGES`       | How many recent messages the brain always sees in full                |
@@ -68,7 +68,7 @@ uv run pytest
 uv run ruff check mcp-server tests
 ```
 
-The tests start the real server over Streamable HTTP and talk to it like an agent would. Two tests call a real model and are skipped unless `OPENROUTER_API_KEY` is set.
+The tests start the real server over Streamable HTTP and talk to it like an agent would. They use a deterministic test-only brain, so they do not spend API credits.
 
 ## Layout
 
