@@ -1,6 +1,8 @@
-from typing import Any, Literal
+from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
+
+from enums import NextMove
 
 
 class BrainResult(BaseModel):
@@ -10,5 +12,5 @@ class BrainResult(BaseModel):
     details: dict[str, Any] = Field(default_factory=dict)
     changed: list[str] = Field(default_factory=list)
     assumptions: list[str] = Field(default_factory=list)
-    next_move: Literal["listen", "ask", "confirm"]
+    next_move: NextMove
     say: str

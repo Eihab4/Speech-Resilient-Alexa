@@ -14,10 +14,6 @@ venv/
 env/
 .pytest_cache/
 
-# Environment variables
-.env
-.env.*
-!.env.example
 node_modules/
 dist/
 
