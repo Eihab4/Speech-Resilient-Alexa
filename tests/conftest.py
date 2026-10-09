@@ -8,7 +8,12 @@ def server(tmp_path):
     processes = []
 
     def start(path: str = "/mcp", **env: str | None) -> str:
-        process, url = start_server(path, MEMORY_DB_PATH=str(tmp_path / "memory.db"), **env)
+        process, url = start_server(
+            path,
+            MEMORY_DB_PATH=str(tmp_path / "memory.db"),
+            LLM_PROVIDER=env.pop("LLM_PROVIDER", None) or "mock",
+            **env,
+        )
         processes.append(process)
         return url
 

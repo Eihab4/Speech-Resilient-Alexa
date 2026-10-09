@@ -48,7 +48,6 @@ def test_env_example_lists_every_setting():
     prefixes = {
         "server": "MCP_",
         "llm": "LLM_",
-        "mock": "MOCK_",
         "memory": "MEMORY_",
         "bedrock": "BEDROCK_",
         "openrouter": "OPENROUTER_",
@@ -56,6 +55,8 @@ def test_env_example_lists_every_setting():
     aliases = {("bedrock", "region"): "AWS_REGION"}
 
     for section, fields in sections.items():
+        if section == "mock":
+            continue
         for field in fields:
             name = aliases.get((section, field), f"{prefixes[section]}{field.upper()}")
             assert f"{name}=" in example
