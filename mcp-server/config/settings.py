@@ -69,6 +69,16 @@ class OpenRouterSettings(Section):
     app_title: str = "Speech-Resilient Alexa"
 
 
+class GroqSettings(Section):
+    model_config = SettingsConfigDict(env_prefix="GROQ_")
+
+    api_key: SecretStr | None = None
+    model_id: str = "openai/gpt-oss-120b"
+    base_url: str = "https://api.groq.com/openai/v1/chat/completions"
+    timeout_seconds: float = 30
+    reasoning_effort: str = "low"
+
+
 class Settings(BaseModel):
     server: ServerSettings = Field(default_factory=ServerSettings)
     llm: LlmSettings = Field(default_factory=LlmSettings)
@@ -76,6 +86,7 @@ class Settings(BaseModel):
     memory: MemorySettings = Field(default_factory=MemorySettings)
     bedrock: BedrockSettings = Field(default_factory=BedrockSettings)
     openrouter: OpenRouterSettings = Field(default_factory=OpenRouterSettings)
+    groq: GroqSettings = Field(default_factory=GroqSettings)
 
 
 @lru_cache

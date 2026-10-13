@@ -1,11 +1,12 @@
 import pytest
 
+from brain.factory import create_brain
 from brain.interpreter import LlmBrain
-from brain.llm import OpenRouterClient
+from brain.llm import GroqClient, OpenRouterClient
 from config import Settings
 from enums import NextMove
 from messages import ErrorMessage, Prompt, Reply
-from support import with_client
+from support import needs_real_llm, with_client
 
 
 @pytest.mark.parametrize("prompt", list(Prompt))
@@ -17,13 +18,23 @@ def test_missing_openrouter_key_uses_the_central_message(monkeypatch):
     monkeypatch.delenv("OPENROUTER", raising=False)
     monkeypatch.setenv("OPENROUTER_API_KEY", "")
 
-    with pytest.raises(ValueError, match=ErrorMessage.OPENROUTER_KEY_MISSING):
+    message = ErrorMessage.LLM_KEY_MISSING.format(variable="OPENROUTER_API_KEY", provider="OpenRouter")
+
+    with pytest.raises(ValueError, match=message):
         OpenRouterClient(Settings())
+
+
+def test_missing_groq_key_uses_the_central_message(monkeypatch):
+    monkeypatch.setenv("GROQ_API_KEY", "")
+    message = ErrorMessage.LLM_KEY_MISSING.format(variable="GROQ_API_KEY", provider="Groq")
+
+    with pytest.raises(ValueError, match=message):
+        GroqClient(Settings())
 
 
 def test_rejected_openrouter_key_uses_the_central_message(monkeypatch):
     monkeypatch.setenv("OPENROUTER_API_KEY", "invalid-key")
-    prefix = ErrorMessage.OPENROUTER_REQUEST_FAILED.split("{")[0]
+    prefix = ErrorMessage.LLM_REQUEST_FAILED.format(provider="OpenRouter", detail="")
 
     with pytest.raises(RuntimeError, match=f"^{prefix}"):
         LlmBrain(OpenRouterClient(Settings())).interpret(["call mom"])
@@ -42,9 +53,9 @@ def test_blank_speech_gets_the_central_reply_over_mcp(server):
     assert result["say"] == Reply.STILL_LISTENING
 
 
-@pytest.mark.skipif(not Settings().openrouter.api_key, reason="needs OPENROUTER_API_KEY")
+@needs_real_llm
 def test_real_llm_answers_with_the_central_prompt():
-    result = LlmBrain(OpenRouterClient(Settings())).interpret(["tomorrow", "doctor", "ten"])
+    result = create_brain().interpret(["tomorrow", "doctor", "ten"])
 
     assert result.next_move in NextMove
     assert result.say

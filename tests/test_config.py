@@ -51,6 +51,7 @@ def test_env_example_lists_every_setting():
         "memory": "MEMORY_",
         "bedrock": "BEDROCK_",
         "openrouter": "OPENROUTER_",
+        "groq": "GROQ_",
     }
     aliases = {("bedrock", "region"): "AWS_REGION"}
 

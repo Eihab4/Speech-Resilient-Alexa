@@ -7,9 +7,25 @@ import time
 from pathlib import Path
 from typing import Any
 
+import pytest
 from fastmcp import Client
 
+from config import Settings
+from enums import LlmProvider
+
 SERVER_SCRIPT = Path(__file__).resolve().parents[1] / "mcp-server" / "server.py"
+
+
+def real_llm_ready() -> bool:
+    """True when LLM_PROVIDER names a hosted model whose API key is set, so real-LLM tests can run."""
+    settings = Settings()
+    keys = {LlmProvider.OPENROUTER: settings.openrouter.api_key, LlmProvider.GROQ: settings.groq.api_key}
+    return bool(keys.get(settings.llm.provider))
+
+
+needs_real_llm = pytest.mark.skipif(
+    not real_llm_ready(), reason="needs LLM_PROVIDER=openrouter or groq with its API key"
+)
 
 
 def free_port() -> int:

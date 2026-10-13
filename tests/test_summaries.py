@@ -2,13 +2,13 @@ import time
 
 import pytest
 
+from brain.factory import create_client
 from brain.interpreter import LlmBrain
-from brain.llm import OpenRouterClient
 from brain.summarizer import LlmSummarizer, MockSummarizer
-from config import Settings
+from config import get_settings
 from enums import NextMove
 from memory import History, Request, SqliteMemoryStore, Turn
-from support import with_client
+from support import needs_real_llm, with_client
 
 
 @pytest.fixture
@@ -127,9 +127,9 @@ def test_a_failing_summarizer_leaves_memory_untouched(store):
     assert len(store.turns(conversation)) == 2
 
 
-@pytest.mark.skipif(not Settings().openrouter.api_key, reason="needs OPENROUTER_API_KEY")
+@needs_real_llm
 def test_the_real_llm_summarizes_and_uses_the_history():
-    client = OpenRouterClient(Settings())
+    client = create_client(get_settings())
     turns = [
         Turn(heard="call mom", say="Call Mom?", next_move=NextMove.CONFIRM),
         Turn(heard="yes", say="Okay.", next_move=NextMove.DONE),
