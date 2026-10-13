@@ -1,5 +1,7 @@
 from fastmcp import Context, FastMCP
 from fastmcp.server.lifespan import lifespan
+from starlette.middleware import Middleware
+from starlette.middleware.cors import CORSMiddleware
 
 from brain.factory import create_brain, create_summarizer
 from config import get_settings
@@ -24,6 +26,16 @@ async def resources(server: FastMCP):
 
 
 mcp = FastMCP(settings.server.name, lifespan=resources)
+
+# Lets the browser frontend in web/ call /mcp directly. The session id header must be
+# exposed, or the browser hides it and the client cannot keep its MCP session.
+cors = Middleware(
+    CORSMiddleware,
+    allow_origins=settings.server.cors_origins,
+    allow_methods=["GET", "POST", "DELETE", "OPTIONS"],
+    allow_headers=["*"],
+    expose_headers=["Mcp-Session-Id"],
+)
 
 
 @mcp.tool(description=ToolDescription.UNDERSTAND_SPEECH)
@@ -53,4 +65,5 @@ if __name__ == "__main__":
         host=settings.server.host,
         port=settings.server.port,
         path=settings.server.path,
+        middleware=[cors],
     )
