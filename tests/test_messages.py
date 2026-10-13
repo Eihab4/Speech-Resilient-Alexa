@@ -1,11 +1,13 @@
+from string import Formatter
+
 import pytest
 
 from brain.factory import create_brain
 from brain.interpreter import LlmBrain
 from brain.llm import GroqClient, OpenRouterClient
 from config import Settings
-from enums import NextMove
-from messages import ErrorMessage, Prompt, Reply
+from enums import Intent, NextMove
+from messages import ACTION_RESULTS, ErrorMessage, Prompt, Reply
 from support import needs_real_llm, with_client
 
 
@@ -59,3 +61,12 @@ def test_real_llm_answers_with_the_central_prompt():
 
     assert result.next_move in NextMove
     assert result.say
+
+
+@pytest.mark.parametrize("intent", list(Intent))
+def test_the_prompt_names_every_detail_an_action_needs(intent):
+    keys = [field for _, field, _, _ in Formatter().parse(ACTION_RESULTS[intent]) if field]
+
+    assert f"- {intent}:" in Prompt.UNDERSTAND_SPEECH.text
+    for key in keys:
+        assert f'"{key}"' in Prompt.UNDERSTAND_SPEECH.text

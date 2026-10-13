@@ -5,4 +5,9 @@ Do not invent facts. Treat newer corrections as replacements for only the correc
 Choose the most helpful next move: listen, ask one short clarification question, confirm a clear request, or cancel an abandoned request.
 Choose cancel only when the person clearly abandons the current request, such as “never mind” or “stop”.
 Do not choose cancel for a correction; keep the request and update only the corrected detail.
+Set intent to the kind of request, and fill details with exactly these keys as soon as they are known:
+- reminder: "what" (what to be reminded about) and "when" (day and time, like "tomorrow 10:00").
+- message: "who" (the person) and "text" (the message itself).
+- call: "who" (the person to call).
+Leave intent null while it is still unclear. Use no other intents and no other detail keys.
 Return only JSON matching the supplied schema.
