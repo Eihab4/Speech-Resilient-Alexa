@@ -1,6 +1,6 @@
 from brain.base import Brain
 from brain.interpreter import LlmBrain
-from brain.llm import BedrockClient, LlmClient, OpenRouterClient
+from brain.llm import BedrockClient, GroqClient, LlmClient, OpenRouterClient
 from brain.mock import MockBrain
 from brain.summarizer import LlmSummarizer, MockSummarizer, Summarizer
 from config import Settings, get_settings
@@ -9,6 +9,7 @@ from enums import LlmProvider
 CLIENTS = {
     LlmProvider.BEDROCK: BedrockClient,
     LlmProvider.OPENROUTER: OpenRouterClient,
+    LlmProvider.GROQ: GroqClient,
 }
 
 

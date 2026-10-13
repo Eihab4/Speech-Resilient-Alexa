@@ -69,14 +69,14 @@ Everything is read from environment variables. `.env.example` lists every settin
 
 | Setting                        | What it controls                                                      |
 | ------------------------------ | --------------------------------------------------------------------- |
-| `LLM_PROVIDER`                 | `openrouter` (default) or `bedrock`                                   |
+| `LLM_PROVIDER`                 | `openrouter` (default), `groq` or `bedrock`                           |
 | `MCP_CORS_ORIGINS`             | Extra browser pages allowed to call the server (localhost is always allowed) |
 | `MEMORY_DB_PATH`               | The SQLite file that holds memory                                     |
 | `MEMORY_UNFINISHED_TTL_HOURS`  | How long an unfinished request is offered back                        |
 | `MEMORY_RECENT_MESSAGES`       | How many recent messages the brain always sees in full                |
 | `MEMORY_SUMMARY_TRIGGER_WORDS` | How long the history can get before older parts are summarized        |
 
-To use a real model, set `LLM_PROVIDER=openrouter` and `OPENROUTER_API_KEY`, or `LLM_PROVIDER=bedrock` with AWS credentials.
+To use a real model, set `LLM_PROVIDER=openrouter` and `OPENROUTER_API_KEY`, `LLM_PROVIDER=groq` and `GROQ_API_KEY` (Groq has a free tier), or `LLM_PROVIDER=bedrock` with AWS credentials.
 
 ## Tests
 
