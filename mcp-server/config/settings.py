@@ -22,6 +22,7 @@ class ServerSettings(Section):
     host: str = "127.0.0.1"
     port: int = 8000
     path: str = "/mcp"
+    cors_origins: list[str] = []
 
 
 class LlmSettings(Section):
