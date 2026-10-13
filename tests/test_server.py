@@ -24,20 +24,30 @@ def test_server_runs_on_configured_port_and_path(server):
     assert "understand_speech" in tools
 
 
-def test_browser_frontend_may_call_the_server(server):
-    url = server(MCP_CORS_ORIGINS='["http://localhost:5173"]')
+def test_browser_frontend_may_call_the_server_from_any_local_port(server):
+    url = server()
 
-    status, headers = preflight(url, "http://localhost:5173")
+    for origin in ["http://localhost:5180", "http://127.0.0.1:3000"]:
+        status, headers = preflight(url, origin)
+
+        assert status == 200
+        assert headers["access-control-allow-origin"] == origin
+
+
+def test_extra_origins_can_be_allowed(server):
+    url = server(MCP_CORS_ORIGINS='["https://demo.example.com"]')
+
+    status, headers = preflight(url, "https://demo.example.com")
 
     assert status == 200
-    assert headers["access-control-allow-origin"] == "http://localhost:5173"
+    assert headers["access-control-allow-origin"] == "https://demo.example.com"
 
 
 def test_other_sites_are_not_allowed(server):
-    url = server(MCP_CORS_ORIGINS='["http://localhost:5173"]')
+    url = server()
 
     try:
-        _, headers = preflight(url, "http://localhost:9999")
+        _, headers = preflight(url, "http://evil.example.com")
     except HTTPError as error:
         headers = error.headers
 
