@@ -19,3 +19,11 @@ export const Speaker = Object.freeze({
   USER: "user",
   ALEXA: "alexa",
 });
+
+// Mirrors TranscriptType in mcp-server/enums/speech.py.
+export const TranscriptType = Object.freeze({
+  PARTIAL: "partial",
+  FINAL: "final",
+  UNAVAILABLE: "unavailable",
+  ERROR: "error",
+});

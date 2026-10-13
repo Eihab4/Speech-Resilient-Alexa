@@ -22,6 +22,7 @@ export const MicLabel = Object.freeze({
 
 export const VoiceHint = Object.freeze({
   LISTENING: "Listening… pause between pieces, each pause is sent on its own.",
+  LISTENING_IN_BROWSER: "Listening with the browser (Amazon Transcribe is unavailable)… pause between pieces.",
   UNSUPPORTED: "Voice needs Chrome or Edge. You can still type.",
 });
 
@@ -30,6 +31,7 @@ const VOICE_ERRORS = Object.freeze({
   "service-not-allowed": "Microphone access was blocked. Allow it in the browser to talk.",
   "audio-capture": "No microphone was found.",
   network: "Voice recognition needs an internet connection.",
+  transcribe: "Amazon Transcribe stopped. Press Speak to try again.",
 });
 
 export const voiceError = (code) => VOICE_ERRORS[code] ?? `Voice input stopped (${code}).`;

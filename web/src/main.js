@@ -2,6 +2,7 @@ import "./styles.css";
 import { Speaker } from "./enums.js";
 import { takeTurn } from "./mcp.js";
 import { MicLabel, Note, SpeakerName, VoiceHint, voiceError } from "./messages.js";
+import { createTranscribeListener, isMicSupported } from "./transcribe.js";
 import { createListener, isVoiceSupported } from "./voice.js";
 
 const form = document.querySelector("#turn-form");
@@ -56,31 +57,53 @@ form.addEventListener("submit", (event) => {
   heard.focus();
 });
 
+let usingBrowser = false;
+const ownHints = [VoiceHint.LISTENING, VoiceHint.LISTENING_IN_BROWSER];
+
+const listenerEvents = {
+  onInterim: (text) => {
+    heard.value = text;
+  },
+  onFragment: (text) => {
+    heard.value = "";
+    sendTurn(text);
+  },
+  onListeningChange: (listening) => {
+    micButton.setAttribute("aria-pressed", String(listening));
+    micButton.textContent = listening ? MicLabel.STOP : MicLabel.START;
+    // Clear only our own hint, so an error shown just before the mic stopped stays visible.
+    if (listening) voiceHint.textContent = usingBrowser ? VoiceHint.LISTENING_IN_BROWSER : VoiceHint.LISTENING;
+    else if (ownHints.includes(voiceHint.textContent)) voiceHint.textContent = "";
+  },
+  onError: (code) => {
+    voiceHint.textContent = voiceError(code);
+  },
+};
+
+// Amazon Transcribe first; the browser's own recognition if Transcribe can't be reached.
 function setupVoice() {
-  if (!isVoiceSupported) {
+  const browser = isVoiceSupported ? createListener(listenerEvents) : null;
+  if (!isMicSupported && !browser) {
     voiceHint.textContent = VoiceHint.UNSUPPORTED;
     return;
   }
 
-  const listener = createListener({
-    onInterim: (text) => {
-      heard.value = text;
-    },
-    onFragment: (text) => {
-      heard.value = "";
-      sendTurn(text);
-    },
-    onListeningChange: (listening) => {
-      micButton.setAttribute("aria-pressed", String(listening));
-      micButton.textContent = listening ? MicLabel.STOP : MicLabel.START;
-      // Clear only our own hint, so an error shown just before the mic stopped stays visible.
-      if (listening) voiceHint.textContent = VoiceHint.LISTENING;
-      else if (voiceHint.textContent === VoiceHint.LISTENING) voiceHint.textContent = "";
-    },
-    onError: (code) => {
-      voiceHint.textContent = voiceError(code);
-    },
-  });
+  let listener = browser;
+  if (isMicSupported) {
+    listener = createTranscribeListener({
+      ...listenerEvents,
+      onUnavailable: () => {
+        listener = browser;
+        usingBrowser = true;
+        if (browser) {
+          browser.start();
+        } else {
+          micButton.hidden = true;
+          voiceHint.textContent = VoiceHint.UNSUPPORTED;
+        }
+      },
+    });
+  }
 
   micButton.hidden = false;
   micButton.textContent = MicLabel.START;
