@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Speech-Resilient Alexa</title>
+  </head>
+  <body>
+    <main>
+      <p class="eyebrow">Speech-Resilient Alexa</p>
+      <h1>Say it your way.</h1>
+      <p class="intro">Send a fragment. Alexa keeps the context, instead of making you start over.</p>
+
+      <form id="turn-form">
+        <label>
+          User ID
+          <input id="user-id" value="demo-user" required />
+        </label>
+        <label>
+          What did you say?
+          <input id="heard" placeholder="Tomorrow… doctor… ten" required autocomplete="off" />
+        </label>
+        <div class="actions">
+          <button type="submit" id="send">Send</button>
+          <button type="button" id="mic" class="secondary" aria-pressed="false" hidden>Speak</button>
+        </div>
+        <p id="voice-hint" class="hint" aria-live="polite"></p>
+      </form>
+
+      <section id="conversation" aria-live="polite" aria-label="Conversation">
+        <p class="empty">Try a short or incomplete phrase.</p>
+      </section>
+    </main>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
