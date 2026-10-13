@@ -52,8 +52,9 @@ def test_env_example_lists_every_setting():
         "bedrock": "BEDROCK_",
         "openrouter": "OPENROUTER_",
         "groq": "GROQ_",
+        "transcribe": "TRANSCRIBE_",
     }
-    aliases = {("bedrock", "region"): "AWS_REGION"}
+    aliases = {("bedrock", "region"): "AWS_REGION", ("transcribe", "region"): "AWS_REGION"}
 
     for section, fields in sections.items():
         if section == "mock":

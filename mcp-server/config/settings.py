@@ -69,6 +69,15 @@ class OpenRouterSettings(Section):
     app_title: str = "Speech-Resilient Alexa"
 
 
+class TranscribeSettings(Section):
+    model_config = SettingsConfigDict(env_prefix="TRANSCRIBE_")
+
+    path: str = "/transcribe"
+    language_code: str = "en-US"
+    sample_rate_hz: int = 16000
+    region: str = Field(default="us-east-1", validation_alias="AWS_REGION")
+
+
 class GroqSettings(Section):
     model_config = SettingsConfigDict(env_prefix="GROQ_")
 
@@ -87,6 +96,7 @@ class Settings(BaseModel):
     bedrock: BedrockSettings = Field(default_factory=BedrockSettings)
     openrouter: OpenRouterSettings = Field(default_factory=OpenRouterSettings)
     groq: GroqSettings = Field(default_factory=GroqSettings)
+    transcribe: TranscribeSettings = Field(default_factory=TranscribeSettings)
 
 
 @lru_cache

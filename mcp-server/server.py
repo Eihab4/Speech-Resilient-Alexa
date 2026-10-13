@@ -1,7 +1,11 @@
+import re
+
+import uvicorn
 from fastmcp import Context, FastMCP
 from fastmcp.server.lifespan import lifespan
 from starlette.middleware import Middleware
 from starlette.middleware.cors import CORSMiddleware
+from starlette.routing import WebSocketRoute
 
 from brain.factory import create_brain, create_summarizer
 from config import get_settings
@@ -11,6 +15,7 @@ from tools.cancel_request import cancel_request as cancel
 from tools.do_confirmed_request import do_confirmed_request as do_confirmed
 from tools.resume_unfinished import resume_unfinished as resume
 from tools.understand_speech import understand
+from transcription import create_transcribe_endpoint
 
 settings = get_settings()
 
@@ -42,6 +47,11 @@ cors = Middleware(
 )
 
 
+def is_allowed_origin(origin: str | None) -> bool:
+    """The same pages CORS allows. No origin means a non-browser client, which CORS does not limit either."""
+    return origin is None or bool(re.fullmatch(LOCAL_ORIGIN, origin)) or origin in settings.server.cors_origins
+
+
 @mcp.tool(description=ToolDescription.UNDERSTAND_SPEECH)
 def understand_speech(user_id: str, heard: str, ctx: Context) -> dict:
     r = ctx.lifespan_context
@@ -63,11 +73,13 @@ def cancel_request(user_id: str, ctx: Context) -> dict:
     return cancel(ctx.lifespan_context["store"], settings.memory.company_id, user_id)
 
 
+def create_app():
+    """The MCP app at /mcp, plus the voice WebSocket, which FastMCP's own routes cannot express."""
+    app = mcp.http_app(path=settings.server.path, transport=settings.server.transport, middleware=[cors])
+    transcribe = create_transcribe_endpoint(settings.transcribe, is_allowed_origin)
+    app.router.routes.append(WebSocketRoute(settings.transcribe.path, transcribe))
+    return app
+
+
 if __name__ == "__main__":
-    mcp.run(
-        transport=settings.server.transport,
-        host=settings.server.host,
-        port=settings.server.port,
-        path=settings.server.path,
-        middleware=[cors],
-    )
+    uvicorn.run(create_app(), host=settings.server.host, port=settings.server.port)

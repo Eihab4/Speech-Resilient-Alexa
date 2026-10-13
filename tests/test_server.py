@@ -1,6 +1,14 @@
+import asyncio
+import json
 from urllib.error import HTTPError
 from urllib.request import Request, urlopen
 
+import boto3
+import pytest
+from websockets.asyncio.client import connect as ws_connect
+from websockets.exceptions import InvalidStatus
+
+from enums import TranscriptType
 from support import with_client
 
 
@@ -52,3 +60,35 @@ def test_other_sites_are_not_allowed(server):
         headers = error.headers
 
     assert "access-control-allow-origin" not in headers
+
+
+def transcribe_url(url: str) -> str:
+    return url.replace("http://", "ws://").rsplit("/", 1)[0] + "/transcribe"
+
+
+def test_voice_socket_refuses_other_sites(server):
+    url = transcribe_url(server())
+
+    async def connect():
+        async with ws_connect(url, origin="http://evil.example.com"):
+            pass
+
+    with pytest.raises(InvalidStatus):
+        asyncio.run(connect())
+
+
+@pytest.mark.skipif(not boto3.Session().get_credentials(), reason="needs AWS credentials")
+def test_voice_socket_streams_to_transcribe(server):
+    url = transcribe_url(server())
+
+    async def stream_silence():
+        async with ws_connect(url, origin="http://localhost:5180") as socket:
+            for _ in range(10):
+                await socket.send(b"\x00\x00" * 1600)  # 100 ms of 16 kHz silence
+            await socket.send("stop")
+            return [json.loads(message) async for message in socket]
+
+    messages = asyncio.run(stream_silence())
+
+    assert all(message["type"] != TranscriptType.UNAVAILABLE for message in messages)
+    assert all(message["type"] != TranscriptType.ERROR for message in messages)

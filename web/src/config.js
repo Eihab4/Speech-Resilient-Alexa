@@ -4,3 +4,11 @@ export const CLIENT_INFO = Object.freeze({ name: "speech-resilient-alexa-web", v
 
 // Language the browser listens for. The demo and the server's prompts are in English.
 export const SPEECH_LANG = import.meta.env.VITE_SPEECH_LANG ?? "en-US";
+
+// The voice WebSocket on the MCP server, which passes the microphone to Amazon Transcribe.
+const transcribeUrl = new URL("/transcribe", MCP_URL);
+transcribeUrl.protocol = transcribeUrl.protocol === "https:" ? "wss:" : "ws:";
+export const TRANSCRIBE_URL = import.meta.env.VITE_TRANSCRIBE_URL ?? transcribeUrl.href;
+
+// Must match TRANSCRIBE_SAMPLE_RATE_HZ on the server.
+export const TRANSCRIBE_SAMPLE_RATE = 16000;
