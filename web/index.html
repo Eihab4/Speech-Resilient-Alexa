@@ -20,7 +20,11 @@
           What did you say?
           <input id="heard" placeholder="Tomorrow… doctor… ten" required autocomplete="off" />
         </label>
-        <button type="submit">Send</button>
+        <div class="actions">
+          <button type="submit" id="send">Send</button>
+          <button type="button" id="mic" class="secondary" aria-pressed="false" hidden>Speak</button>
+        </div>
+        <p id="voice-hint" class="hint" aria-live="polite"></p>
       </form>
 
       <section id="conversation" aria-live="polite" aria-label="Conversation">

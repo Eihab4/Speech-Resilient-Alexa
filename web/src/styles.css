@@ -101,3 +101,27 @@ button:disabled {
   cursor: wait;
   opacity: 0.6;
 }
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+button.secondary {
+  border: 1px solid #6b54d9;
+  background: white;
+  color: #6b54d9;
+}
+
+button.secondary[aria-pressed="true"] {
+  background: #d93d54;
+  border-color: #d93d54;
+  color: white;
+}
+
+.hint {
+  min-height: 1.4em;
+  margin: 0;
+  color: #616b79;
+}
