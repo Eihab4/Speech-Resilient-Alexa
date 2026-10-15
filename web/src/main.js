@@ -4,6 +4,7 @@ import { takeTurn } from "./mcp.js";
 import { MicLabel, MuteLabel, Note, SpeakerName, VoiceHint, voiceError } from "./messages.js";
 import { pauseWhileSpeaking } from "./pause.js";
 import { createOutput } from "./output.js";
+import { createPollyVoice } from "./polly.js";
 import { createBrowserVoice, isBrowserVoiceSupported } from "./speak.js";
 import { createTranscribeListener, isMicSupported } from "./transcribe.js";
 import { createListener, isVoiceSupported } from "./voice.js";
@@ -21,8 +22,8 @@ const onSpeakingChange = pauseWhileSpeaking(
   () => listener,
   () => (voiceHint.textContent = VoiceHint.ALEXA_TALKING),
 );
-const voices = isBrowserVoiceSupported ? [createBrowserVoice()] : [];
-const voice = voices.length ? createOutput(voices, { onSpeakingChange }) : null;
+const voices = [createPollyVoice(), ...(isBrowserVoiceSupported ? [createBrowserVoice()] : [])];
+const voice = createOutput(voices, { onSpeakingChange });
 
 function addMessage(speaker, text, note = "") {
   conversation.querySelector(".empty")?.remove();
@@ -49,7 +50,7 @@ function sendTurn(words) {
     try {
       const result = await takeTurn(userId.value.trim(), words);
       addMessage(Speaker.ALEXA, result.say, result.next_move ? Note.nextMove(result.next_move) : "");
-      voice?.speak(result.say);
+      voice.speak(result.say);
     } catch (error) {
       addMessage(Speaker.ALEXA, error.message, Note.ERROR);
     } finally {
@@ -123,8 +124,6 @@ function setupVoice() {
 }
 
 function setupMute() {
-  if (!voice) return;
-  muteButton.hidden = false;
   muteButton.addEventListener("click", () => {
     voice.setMuted(!voice.muted);
     muteButton.setAttribute("aria-pressed", String(voice.muted));
