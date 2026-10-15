@@ -47,3 +47,27 @@ test("blank text is not spoken", () => {
   expect(spoken).toEqual([]);
   expect(changes).toEqual([]);
 });
+
+test("a muted Alexa says nothing", () => {
+  speaker.setMuted(true);
+  speaker.speak("Done.");
+
+  expect(spoken).toEqual([]);
+  expect(speaker.muted).toBe(true);
+});
+
+test("muting mid-reply stops it and frees the microphone", () => {
+  speaker.speak("Should I set a reminder for your doctor tomorrow at ten?");
+  speaker.setMuted(true);
+
+  expect(speaker.speaking).toBe(false);
+  expect(changes).toEqual([true, false]);
+});
+
+test("unmuting brings the voice back", () => {
+  speaker.setMuted(true);
+  speaker.setMuted(false);
+  speaker.speak("Mm-hm.");
+
+  expect(spoken.map((utterance) => utterance.text)).toEqual(["Mm-hm."]);
+});

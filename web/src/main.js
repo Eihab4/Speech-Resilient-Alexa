@@ -1,7 +1,7 @@
 import "./styles.css";
 import { Speaker } from "./enums.js";
 import { takeTurn } from "./mcp.js";
-import { MicLabel, Note, SpeakerName, VoiceHint, voiceError } from "./messages.js";
+import { MicLabel, MuteLabel, Note, SpeakerName, VoiceHint, voiceError } from "./messages.js";
 import { pauseWhileSpeaking } from "./pause.js";
 import { createSpeaker, isSpeechSupported } from "./speak.js";
 import { createTranscribeListener, isMicSupported } from "./transcribe.js";
@@ -12,6 +12,7 @@ const userId = document.querySelector("#user-id");
 const heard = document.querySelector("#heard");
 const sendButton = document.querySelector("#send");
 const micButton = document.querySelector("#mic");
+const muteButton = document.querySelector("#mute");
 const voiceHint = document.querySelector("#voice-hint");
 const conversation = document.querySelector("#conversation");
 let listener = null;
@@ -119,4 +120,15 @@ function setupVoice() {
   micButton.addEventListener("click", () => (listener.listening ? listener.stop() : listener.start()));
 }
 
+function setupMute() {
+  if (!voice) return;
+  muteButton.hidden = false;
+  muteButton.addEventListener("click", () => {
+    voice.setMuted(!voice.muted);
+    muteButton.setAttribute("aria-pressed", String(voice.muted));
+    muteButton.textContent = voice.muted ? MuteLabel.UNMUTE : MuteLabel.MUTE;
+  });
+}
+
 setupVoice();
+setupMute();

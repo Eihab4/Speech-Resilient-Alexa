@@ -4,6 +4,7 @@ export const isSpeechSupported = Boolean(window.speechSynthesis && window.Speech
 
 export function createSpeaker({ onSpeakingChange }) {
   let queued = 0;
+  let muted = false;
 
   function finished() {
     if (queued === 0) return;
@@ -13,7 +14,7 @@ export function createSpeaker({ onSpeakingChange }) {
 
   return {
     speak(text) {
-      if (!text) return;
+      if (muted || !text) return;
       const utterance = new SpeechSynthesisUtterance(text);
       utterance.lang = SPEECH_LANG;
       utterance.onend = finished;
@@ -21,6 +22,13 @@ export function createSpeaker({ onSpeakingChange }) {
       if (queued === 0) onSpeakingChange(true);
       queued += 1;
       window.speechSynthesis.speak(utterance);
+    },
+    setMuted(value) {
+      muted = value;
+      if (muted) window.speechSynthesis.cancel();
+    },
+    get muted() {
+      return muted;
     },
     get speaking() {
       return queued > 0;
