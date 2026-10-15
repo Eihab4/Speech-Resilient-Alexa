@@ -10,6 +10,7 @@ class Reply(StrEnum):
     NEEDS_YES = "I need a yes first."
     NOTHING_PENDING = "There's nothing waiting right now."
     CANCELLED = "Okay, cancelled."
+    BACK_TO_IT = "Okay, let's finish this one first. {question}"
     DONE = "Done. {result}"
     RESUME = "You didn't finish your {intent} last time. Want to pick it up?"
     GENERIC_INTENT = "request"

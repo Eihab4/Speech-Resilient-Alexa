@@ -7,6 +7,7 @@ class NextMove(StrEnum):
     CONFIRM = "confirm"
     CANCEL = "cancel"
     DONE = "done"
+    SWITCH = "switch"  # asked whether to drop the open request for a new one
 
 
 class Intent(StrEnum):
