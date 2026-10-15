@@ -20,10 +20,16 @@ export const MicLabel = Object.freeze({
   STOP: "Stop listening",
 });
 
+export const MuteLabel = Object.freeze({
+  MUTE: "Mute Alexa",
+  UNMUTE: "Unmute Alexa",
+});
+
 export const VoiceHint = Object.freeze({
   LISTENING: "Listening… pause between pieces, each pause is sent on its own.",
   LISTENING_IN_BROWSER: "Listening with the browser (Amazon Transcribe is unavailable)… pause between pieces.",
   UNSUPPORTED: "Voice needs Chrome or Edge. You can still type.",
+  ALEXA_TALKING: "Alexa is talking… the microphone comes back when she finishes.",
 });
 
 const VOICE_ERRORS = Object.freeze({

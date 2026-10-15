@@ -1,7 +1,11 @@
 import "./styles.css";
 import { Speaker } from "./enums.js";
 import { takeTurn } from "./mcp.js";
-import { MicLabel, Note, SpeakerName, VoiceHint, voiceError } from "./messages.js";
+import { MicLabel, MuteLabel, Note, SpeakerName, VoiceHint, voiceError } from "./messages.js";
+import { pauseWhileSpeaking } from "./pause.js";
+import { createOutput } from "./output.js";
+import { createPollyVoice } from "./polly.js";
+import { createBrowserVoice, isBrowserVoiceSupported } from "./speak.js";
 import { createTranscribeListener, isMicSupported } from "./transcribe.js";
 import { createListener, isVoiceSupported } from "./voice.js";
 
@@ -10,8 +14,16 @@ const userId = document.querySelector("#user-id");
 const heard = document.querySelector("#heard");
 const sendButton = document.querySelector("#send");
 const micButton = document.querySelector("#mic");
+const muteButton = document.querySelector("#mute");
 const voiceHint = document.querySelector("#voice-hint");
 const conversation = document.querySelector("#conversation");
+let listener = null;
+const onSpeakingChange = pauseWhileSpeaking(
+  () => listener,
+  () => (voiceHint.textContent = VoiceHint.ALEXA_TALKING),
+);
+const voices = [createPollyVoice(), ...(isBrowserVoiceSupported ? [createBrowserVoice()] : [])];
+const voice = createOutput(voices, { onSpeakingChange });
 
 function addMessage(speaker, text, note = "") {
   conversation.querySelector(".empty")?.remove();
@@ -38,6 +50,7 @@ function sendTurn(words) {
     try {
       const result = await takeTurn(userId.value.trim(), words);
       addMessage(Speaker.ALEXA, result.say, result.next_move ? Note.nextMove(result.next_move) : "");
+      voice.speak(result.say);
     } catch (error) {
       addMessage(Speaker.ALEXA, error.message, Note.ERROR);
     } finally {
@@ -88,7 +101,7 @@ function setupVoice() {
     return;
   }
 
-  let listener = browser;
+  listener = browser;
   if (isMicSupported) {
     listener = createTranscribeListener({
       ...listenerEvents,
@@ -110,4 +123,13 @@ function setupVoice() {
   micButton.addEventListener("click", () => (listener.listening ? listener.stop() : listener.start()));
 }
 
+function setupMute() {
+  muteButton.addEventListener("click", () => {
+    voice.setMuted(!voice.muted);
+    muteButton.setAttribute("aria-pressed", String(voice.muted));
+    muteButton.textContent = voice.muted ? MuteLabel.UNMUTE : MuteLabel.MUTE;
+  });
+}
+
 setupVoice();
+setupMute();

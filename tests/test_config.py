@@ -35,6 +35,28 @@ def test_openrouter_key_accepts_both_names(monkeypatch, variable):
     assert Settings().openrouter.api_key.get_secret_value() == "secret"
 
 
+def test_polly_reads_its_voice_and_shares_the_aws_region(monkeypatch):
+    monkeypatch.setenv("AWS_REGION", "eu-west-1")
+    monkeypatch.setenv("POLLY_VOICE_ID", "Matthew")
+    monkeypatch.setenv("POLLY_ENGINE", "generative")
+    monkeypatch.setenv("POLLY_OUTPUT_FORMAT", "ogg_vorbis")
+
+    polly = Settings().polly
+
+    assert polly.region == "eu-west-1"
+    assert polly.voice_id == "Matthew"
+    assert polly.engine == "generative"
+    assert polly.output_format.media_type == "audio/ogg"
+
+
+@pytest.mark.parametrize("variable, value", [("POLLY_ENGINE", "fast"), ("POLLY_OUTPUT_FORMAT", "wav")])
+def test_unknown_polly_values_are_rejected(monkeypatch, variable, value):
+    monkeypatch.setenv(variable, value)
+
+    with pytest.raises(ValidationError):
+        Settings()
+
+
 def test_unknown_provider_is_rejected(monkeypatch):
     monkeypatch.setenv("LLM_PROVIDER", "gemini")
 
@@ -53,8 +75,13 @@ def test_env_example_lists_every_setting():
         "openrouter": "OPENROUTER_",
         "groq": "GROQ_",
         "transcribe": "TRANSCRIBE_",
+        "polly": "POLLY_",
     }
-    aliases = {("bedrock", "region"): "AWS_REGION", ("transcribe", "region"): "AWS_REGION"}
+    aliases = {
+        ("bedrock", "region"): "AWS_REGION",
+        ("transcribe", "region"): "AWS_REGION",
+        ("polly", "region"): "AWS_REGION",
+    }
 
     for section, fields in sections.items():
         if section == "mock":
