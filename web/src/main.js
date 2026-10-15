@@ -2,6 +2,7 @@ import "./styles.css";
 import { Speaker } from "./enums.js";
 import { takeTurn } from "./mcp.js";
 import { MicLabel, Note, SpeakerName, VoiceHint, voiceError } from "./messages.js";
+import { createSpeaker, isSpeechSupported } from "./speak.js";
 import { createTranscribeListener, isMicSupported } from "./transcribe.js";
 import { createListener, isVoiceSupported } from "./voice.js";
 
@@ -12,6 +13,7 @@ const sendButton = document.querySelector("#send");
 const micButton = document.querySelector("#mic");
 const voiceHint = document.querySelector("#voice-hint");
 const conversation = document.querySelector("#conversation");
+const voice = isSpeechSupported ? createSpeaker({ onSpeakingChange: () => {} }) : null;
 
 function addMessage(speaker, text, note = "") {
   conversation.querySelector(".empty")?.remove();
@@ -38,6 +40,7 @@ function sendTurn(words) {
     try {
       const result = await takeTurn(userId.value.trim(), words);
       addMessage(Speaker.ALEXA, result.say, result.next_move ? Note.nextMove(result.next_move) : "");
+      voice?.speak(result.say);
     } catch (error) {
       addMessage(Speaker.ALEXA, error.message, Note.ERROR);
     } finally {
