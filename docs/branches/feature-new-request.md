@@ -12,7 +12,7 @@ A request stays open while its status is `pending` or `confirmed`. Every new mes
 flowchart TD
     H["person: call mom<br/>(a reminder is open)"] --> B["brain: new_request = true"]
     B --> Q["Alexa: Should I stop the doctor reminder<br/>and call Mom instead?"]
-    Q -->|yes| N["old request cancelled<br/>new request starts from 'call mom'"]
+    Q -->|yes| N["old request replaced<br/>new request starts from 'call mom'"]
     Q -->|no| O["old request continues<br/>Alexa asks its last question again"]
     H2["person: no, mom<br/>(a call to Sara is open)"] --> C["brain: new_request = false<br/>a correction, same row"]
 ```
@@ -26,7 +26,7 @@ flowchart TD
   - set `new_request` only for a new one, and only when the open request already has a clear intent.
 - [x] **3. Server:** in `tools/understand_speech.py`:
   - `new_request` is true: don't touch the open request. Ask the switch question and save the turn with a new move, `NextMove.SWITCH`, and no request.
-  - the last turn was `switch` and the person says yes: cancel the old request, start a new one, and interpret the saved piece on its own.
+  - the last turn was `switch` and the person says yes: mark the old request `replaced`, start a new one, and interpret the saved piece on its own.
   - the last turn was `switch` and the person says no: keep the old request and ask its last question again.
   - anything else: handled as usual on the open request. Only a yes switches.
 - [x] **4. Texts:** the "back to it" reply in `messages/replies.py`. The switch question itself comes from the brain.
@@ -39,8 +39,17 @@ flowchart TD
 - **Ask, don't guess.** With broken speech a correction and a new request can sound alike. If the brain guesses wrong, the person loses what they said. Asking costs one turn and drops nothing without a yes.
 - **The brain writes the switch question.** It has to name both requests ("the doctor reminder", "call Mom"), which a fixed template can't do well. A yes drops the open request, so the prompt tells it to say "stop", not "keep".
 - **Switch turns belong to no request.** Their `request_id` is empty, so "call mom" never reaches the brain as a piece of the old request, even after a no. The new piece is that turn's `heard`, so no new table is needed.
-- **No history when switching.** After a yes, the brain reads the new piece without the history. The history shows the dropped request with its question unanswered, and with it the brain asked to switch again, in a loop.
+- **`replaced`, not `cancelled`.** The person didn't say "never mind"; they chose to do something else first. A new status, `RequestStatus.REPLACED`, keeps that difference in the data.
+- **The history says how a request ended.** Each cancelled or replaced request in the history is followed by a note, such as "(this request was left unfinished: the person moved to another request)". Without it, the history showed the old request with its question unanswered, and after a yes the brain asked to switch again, in a loop.
 - **The yes itself is not saved as a turn.** The piece ("call mom") becomes the first turn of the new request, because the brain reads a request's pieces from its turns.
+
+## Also fixed
+
+- **Confirm questions are questions.** The brain sometimes worded a confirm as if it were done, such as "Calling Mom now." before any yes. The prompt now asks for a yes/no question, such as "Call Mom?".
+
+## Still open
+
+- **After a no, the new request is not offered again.** The person has to say "call mom" again once the first request is done.
 
 ## Tests
 
@@ -52,5 +61,6 @@ uv run ruff check mcp-server tests
 
 - A correction stays in the same request.
 - A new request asks first and leaves the open one untouched.
-- Yes cancels the open request and starts the new one, which can then be carried out.
+- Yes replaces the open request with the new one, which can then be carried out.
+- The history notes how a cancelled or replaced request ended.
 - No keeps the open request, asks its question again, and a yes then carries it out.
