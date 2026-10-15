@@ -4,6 +4,9 @@ from pathlib import Path
 
 PROMPTS_DIR = Path(__file__).parent / "prompts"
 
+# Shown to the brain after a request in the history that ended without being done.
+CANCELLED_NOTE = "(this request was cancelled)"
+
 
 class Prompt(StrEnum):
     UNDERSTAND_SPEECH = "understand_speech"
