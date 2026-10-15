@@ -31,4 +31,4 @@ src = ["mcp-server", "tests"]
 extend-select = ["I"]
 
 [tool.ruff.lint.isort]
-known-first-party = ["brain", "config", "enums", "memory", "messages", "tools", "transcription", "utils", "support"]
+known-first-party = ["brain", "config", "enums", "memory", "messages", "speech", "tools", "transcription", "utils", "support"]

@@ -5,12 +5,13 @@ from fastmcp import Context, FastMCP
 from fastmcp.server.lifespan import lifespan
 from starlette.middleware import Middleware
 from starlette.middleware.cors import CORSMiddleware
-from starlette.routing import WebSocketRoute
+from starlette.routing import Route, WebSocketRoute
 
 from brain.factory import create_brain, create_summarizer
 from config import get_settings
 from memory import History, SqliteMemoryStore
 from messages import ToolDescription
+from speech import PollySynthesizer, create_speak_endpoint
 from tools.cancel_request import cancel_request as cancel
 from tools.do_confirmed_request import do_confirmed_request as do_confirmed
 from tools.resume_unfinished import resume_unfinished as resume
@@ -78,6 +79,8 @@ def create_app():
     app = mcp.http_app(path=settings.server.path, transport=settings.server.transport, middleware=[cors])
     transcribe = create_transcribe_endpoint(settings.transcribe, is_allowed_origin)
     app.router.routes.append(WebSocketRoute(settings.transcribe.path, transcribe))
+    speak = create_speak_endpoint(PollySynthesizer(settings.polly))
+    app.router.routes.append(Route(settings.polly.path, speak, methods=["POST"]))
     return app
 
 
