@@ -15,22 +15,42 @@
 
 ## New tools
 
-Each tool is a new file in `../mcp-server/tools`, with its texts in `mcp-server/messages/`. Every action asks for "yes" first, except `emergency_sos`. Messages go out by Telegram or SMS (Amazon SNS) through one `notify(contact, text)` helper, so the tools don't care which channel is used.
+Each tool is a new file in `../mcp-server/tools`, with its texts in `mcp-server/messages/`. Every action asks for "yes" first, except `emergency_sos`. Messages go out through one `notify(contact, text)` helper, so the tools don't care which channel is used.
+
+Next to each tool is the service it uses. **Polly** and **the brain** (the LLM) already work. **SNS**, **Translate**, **Comprehend** and **Location** are new: test each one on the account before building on it.
 
 ### Setup (do first)
 
-- [ ] **Telegram:** create a bot with BotFather, add `TELEGRAM_BOT_TOKEN` to settings, and a contacts list that maps names ("Sara", "my son") to chat ids.
-- [ ] **AWS:** give the IAM user `speech-resilient-alexa` only what's used (SNS, Location). New accounts are in the SMS sandbox, so verify each demo phone number in the SNS console. Timers can run as a background task inside the server (simple) or with EventBridge + Lambda (bigger AWS integration).
+- [ ] **AWS:** give the IAM user `speech-resilient-alexa` only what's used (SNS, Translate, Comprehend, Location). New accounts are in the SMS sandbox, so verify each demo phone number in the SNS console. If SMS doesn't work, use SNS email.
+- [ ] **Telegram (optional):** a free second channel for `notify`. Create a bot with BotFather, add `TELEGRAM_BOT_TOKEN` to settings, and a contacts list that maps names ("Sara", "my son") to chat ids.
 
-### Tools
+### Do first
 
-- [ ] **`share_location`:** "send Sara my location". The page gets the position from the browser, and the tool sends it to the contact as a map pin.
-- [ ] **`ask_for_help`:** when the person says "help", or Alexa still hasn't understood after a few tries, the caregiver gets what was understood so far ("Dad is trying to set a reminder for the doctor tomorrow, the time is unclear").
-- [ ] **`emergency_sos`:** "help!", "I fell", "emergency". Sends an urgent alert with the location right away, without asking "yes". The trigger words must be hard to say by accident.
-- [ ] **`add_calendar_event`:** "doctor tomorrow at ten" becomes a real Google Calendar event. Needs Google OAuth (the heaviest setup), and the prompt needs today's date.
-- [ ] **`where_am_i`:** says the current address (Location `ReverseGeocode`), then offers to send it to someone.
-- [ ] **`find_nearby`:** "nearest pharmacy?" answers with name, address and distance (Location `SearchNearby`), and can text the directions.
-- [ ] **`safe_walk`:** "going to the pharmacy, back in half an hour". If they don't say "I'm home" in time, the caregiver gets an alert with where they went and their last location.
-- [ ] **`medication_reminder`:** reminds at the set time. If they don't say "I took it" within 15 minutes, the caregiver is alerted. Every dose taken or missed is logged.
-- [ ] **`daily_summary`:** an evening SMS to the family: what was asked for, which medicines were taken or missed, and whether help was asked for.
-- [ ] **`say_it_simpler`:** "I didn't understand". Alexa repeats her last reply in simpler, shorter words, and speaks it slower.
+- [ ] **`say_it_for_me`** — Polly, brain: the person says it in pieces, and Alexa says it clearly to whoever is in front of them ("I need my blood pressure medicine").
+- [ ] **`say_it_simpler`** — Polly, brain, memory: "I didn't understand". Alexa repeats her last reply in simpler, shorter words, and speaks it slower.
+- [ ] **`ask_for_help`** — SNS, memory: when the person says "help", or Alexa still hasn't understood after a few tries, the caregiver gets what was understood so far ("Dad is trying to set a reminder for the doctor tomorrow, the time is unclear"). In the demo, a teammate's phone gets the SMS live.
+- [ ] **`speech_trend`** — memory only: how many tries Alexa needed per request, day by day ("4 tries on day one, 1 now"). Goes with **Usual requests** in Memory: together they show Alexa learns the person over time.
+- [ ] **`speech_practice`** — Transcribe, memory: daily speech exercises. Alexa gives words to say, scores each one from Transcribe's confidence per word, and tracks progress with `speech_trend`. For people recovering after a stroke. Today the server only passes the text on, so `transcription/stream.py` must also pass the confidence.
+- [ ] **`finish_my_sentence`** — memory, brain: the person says "call…" and stops. Alexa offers the likely endings: "Mom? Sara? The doctor?", like phone keyboard suggestions, but spoken. The suggestions come from **Usual requests**, so do that first.
+- [ ] **`notice_frustration`** — Comprehend: when the person repeats themselves or says "no no no", Alexa calms things down ("Take your time, I'm listening") and switches to yes/no questions or offers help. Comprehend reads the mood of the text and supports Arabic.
+- [ ] **`yes_no_mode`** — memory only: after a few failed tries, Alexa stops asking to repeat and asks yes/no questions instead ("Do you want to call someone?" "Mom?"). A change in `understand_speech`, not a new tool.
+- [ ] **`my_phrases`** — Polly, memory: one word says a saved sentence. "doctor" → "I'm not feeling well and I need a doctor."
+- [ ] **`translate_for_me`** — Translate, Polly: the person speaks Arabic, and Alexa says it in English (for a doctor, for example).
+
+### If there's time
+
+- [ ] **`emergency_sos`** — SNS, browser location: "help!", "I fell", "emergency". Sends an urgent alert with the location right away, without asking "yes". The trigger words must be hard to say by accident.
+- [ ] **`where_am_i`** — Location, browser location: says the current address (`ReverseGeocode`), then offers to send it to someone.
+- [ ] **`share_location`** — SNS, browser location: "send Sara my location" sends the contact a map pin.
+- [ ] **`find_nearby`** — Location, browser location: "nearest pharmacy?" answers with name, address and distance (`SearchNearby`).
+- [ ] **`what_did_i_ask`** — memory only: "what did I ask for today?"
+
+### Not now (timers or heavy setup)
+
+- [ ] **`medication_reminder`** — timer, SNS: reminds at the set time. If they don't say "I took it" within 15 minutes, the caregiver is alerted. Every dose taken or missed is logged.
+- [ ] **`safe_walk`** — timer, SNS, browser location: "going to the pharmacy, back in half an hour". If they don't say "I'm home" in time, the caregiver gets an alert.
+- [ ] **`daily_summary`** — timer, SNS, brain: an evening message to the family: what was asked for, which medicines were taken or missed, and whether help was asked for.
+- [ ] **`add_calendar_event`** — Google Calendar: "doctor tomorrow at ten" becomes a real event. Needs Google OAuth, the heaviest setup.
+- [ ] **`read_medicine_box`** — Textract, Polly: the person photographs a medicine box, and Alexa reads the name and dose.
+
+Timers can run as a background task inside the server (simple) or with EventBridge + Lambda (a bigger AWS integration).
