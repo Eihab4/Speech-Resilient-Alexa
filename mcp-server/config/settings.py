@@ -4,7 +4,7 @@ from pathlib import Path
 from pydantic import AliasChoices, BaseModel, Field, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-from enums import LlmProvider
+from enums import AudioFormat, LlmProvider, PollyEngine
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 ENV_FILE = PROJECT_ROOT / ".env"
@@ -78,6 +78,16 @@ class TranscribeSettings(Section):
     region: str = Field(default="us-east-1", validation_alias="AWS_REGION")
 
 
+class PollySettings(Section):
+    model_config = SettingsConfigDict(env_prefix="POLLY_")
+
+    path: str = "/speak"
+    voice_id: str = "Joanna"
+    engine: PollyEngine = PollyEngine.NEURAL
+    output_format: AudioFormat = AudioFormat.MP3
+    region: str = Field(default="us-east-1", validation_alias="AWS_REGION")
+
+
 class GroqSettings(Section):
     model_config = SettingsConfigDict(env_prefix="GROQ_")
 
@@ -97,6 +107,7 @@ class Settings(BaseModel):
     openrouter: OpenRouterSettings = Field(default_factory=OpenRouterSettings)
     groq: GroqSettings = Field(default_factory=GroqSettings)
     transcribe: TranscribeSettings = Field(default_factory=TranscribeSettings)
+    polly: PollySettings = Field(default_factory=PollySettings)
 
 
 @lru_cache
