@@ -21,6 +21,7 @@ class RequestStatus(StrEnum):
     CONFIRMED = "confirmed"
     DONE = "done"
     CANCELLED = "cancelled"
+    REPLACED = "replaced"  # left unfinished because the person moved to another request
 
 
 class TranscriptType(StrEnum):

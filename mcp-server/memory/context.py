@@ -1,17 +1,13 @@
-from enums import NextMove
 from memory.models import Turn
-from messages import CANCELLED_NOTE
-
-# How a request's last turn looks when it ended on its own. Any other last move means it was dropped midway.
-ENDING_MOVES = {NextMove.DONE, NextMove.CANCEL}
+from messages import REQUEST_ENDINGS
 
 
 def render_turns(summary: str, turns: list[Turn]) -> str:
-    """The turns of finished requests, with a note after each request that was cancelled before it was done."""
+    """The turns of finished requests, with a note after each one that ended without being done."""
     lines = []
     for index, turn in enumerate(turns):
         lines.append(f"person: {turn.heard}\nalexa: {turn.say}")
-        ends_request = index == len(turns) - 1 or turns[index + 1].request_id != turn.request_id
-        if ends_request and turn.next_move not in ENDING_MOVES:
-            lines.append(CANCELLED_NOTE)
+        last_of_request = index == len(turns) - 1 or turns[index + 1].request_id != turn.request_id
+        if last_of_request and turn.request_status in REQUEST_ENDINGS:
+            lines.append(REQUEST_ENDINGS[turn.request_status])
     return "\n".join(filter(None, [summary, *lines]))

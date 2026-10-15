@@ -63,7 +63,7 @@ def test_a_new_request_asks_before_dropping_the_open_one(server, db_path):
     assert pieces == ["tomorrow", "doctor ten"]
 
 
-def test_yes_cancels_the_open_request_and_starts_the_new_one(server, db_path):
+def test_yes_replaces_the_open_request_with_the_new_one(server, db_path):
     url = server()
     reminder, _ = call_mom_during_a_reminder(url)
 
@@ -74,7 +74,7 @@ def test_yes_cancels_the_open_request_and_starts_the_new_one(server, db_path):
     assert switched["next_move"] == NextMove.CONFIRM
     assert switched["say"] == "Call Mom?"
     assert switched["pending_id"] != reminder["pending_id"]
-    assert old.status == RequestStatus.CANCELLED
+    assert old.status == RequestStatus.REPLACED
     assert (new.intent, new.details, new_pieces) == ("call", {"who": "mom"}, ["call mom"])
 
 

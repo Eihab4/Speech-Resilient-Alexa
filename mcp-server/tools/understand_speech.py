@@ -23,7 +23,7 @@ def understand(brain: Brain, store: MemoryStore, history: History, company_id: s
     turn_request_id = request.id
 
     if set_aside and said_yes:
-        store.save_request(conversation, request.model_copy(update={"status": RequestStatus.CANCELLED}))
+        store.save_request(conversation, request.model_copy(update={"status": RequestStatus.REPLACED}))
         result = brain.interpret([set_aside], history.for_brain(conversation))
         request = Request(intent=result.intent, details=result.details)
         turn_request_id, fragment = request.id, set_aside
