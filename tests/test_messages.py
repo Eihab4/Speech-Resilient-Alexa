@@ -70,3 +70,7 @@ def test_the_prompt_names_every_detail_an_action_needs(intent):
     assert f"- {intent}:" in Prompt.UNDERSTAND_SPEECH.text
     for key in keys:
         assert f'"{key}"' in Prompt.UNDERSTAND_SPEECH.text
+
+
+def test_the_prompt_tells_the_brain_when_to_flag_a_new_request():
+    assert "new_request" in Prompt.UNDERSTAND_SPEECH.text
