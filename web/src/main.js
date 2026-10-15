@@ -2,6 +2,7 @@ import "./styles.css";
 import { Speaker } from "./enums.js";
 import { takeTurn } from "./mcp.js";
 import { MicLabel, Note, SpeakerName, VoiceHint, voiceError } from "./messages.js";
+import { pauseWhileSpeaking } from "./pause.js";
 import { createSpeaker, isSpeechSupported } from "./speak.js";
 import { createTranscribeListener, isMicSupported } from "./transcribe.js";
 import { createListener, isVoiceSupported } from "./voice.js";
@@ -13,7 +14,12 @@ const sendButton = document.querySelector("#send");
 const micButton = document.querySelector("#mic");
 const voiceHint = document.querySelector("#voice-hint");
 const conversation = document.querySelector("#conversation");
-const voice = isSpeechSupported ? createSpeaker({ onSpeakingChange: () => {} }) : null;
+let listener = null;
+const onSpeakingChange = pauseWhileSpeaking(
+  () => listener,
+  () => (voiceHint.textContent = VoiceHint.ALEXA_TALKING),
+);
+const voice = isSpeechSupported ? createSpeaker({ onSpeakingChange }) : null;
 
 function addMessage(speaker, text, note = "") {
   conversation.querySelector(".empty")?.remove();
@@ -91,7 +97,7 @@ function setupVoice() {
     return;
   }
 
-  let listener = browser;
+  listener = browser;
   if (isMicSupported) {
     listener = createTranscribeListener({
       ...listenerEvents,
