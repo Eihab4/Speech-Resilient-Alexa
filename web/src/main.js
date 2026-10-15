@@ -3,7 +3,8 @@ import { Speaker } from "./enums.js";
 import { takeTurn } from "./mcp.js";
 import { MicLabel, MuteLabel, Note, SpeakerName, VoiceHint, voiceError } from "./messages.js";
 import { pauseWhileSpeaking } from "./pause.js";
-import { createSpeaker, isSpeechSupported } from "./speak.js";
+import { createOutput } from "./output.js";
+import { createBrowserVoice, isBrowserVoiceSupported } from "./speak.js";
 import { createTranscribeListener, isMicSupported } from "./transcribe.js";
 import { createListener, isVoiceSupported } from "./voice.js";
 
@@ -20,7 +21,8 @@ const onSpeakingChange = pauseWhileSpeaking(
   () => listener,
   () => (voiceHint.textContent = VoiceHint.ALEXA_TALKING),
 );
-const voice = isSpeechSupported ? createSpeaker({ onSpeakingChange }) : null;
+const voices = isBrowserVoiceSupported ? [createBrowserVoice()] : [];
+const voice = voices.length ? createOutput(voices, { onSpeakingChange }) : null;
 
 function addMessage(speaker, text, note = "") {
   conversation.querySelector(".empty")?.remove();
