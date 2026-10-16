@@ -67,6 +67,17 @@ button {
   padding: 13px 24px;
 }
 
+.sos-countdown {
+  margin: 0 0 24px;
+  border-radius: 14px;
+  background: #c62828;
+  color: white;
+  font-size: clamp(1.4rem, 5vw, 2rem);
+  font-weight: 700;
+  padding: 18px 20px;
+  text-align: center;
+}
+
 #conversation {
   display: grid;
   gap: 12px;
