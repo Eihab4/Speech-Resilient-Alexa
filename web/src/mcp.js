@@ -55,3 +55,7 @@ export async function takeTurn(userId, heard) {
 
   return decision;
 }
+
+export function sendSos(userId, position) {
+  return callTool(Tool.EMERGENCY_SOS, { user_id: userId, ...position });
+}

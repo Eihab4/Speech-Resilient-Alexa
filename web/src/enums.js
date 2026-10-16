@@ -5,6 +5,7 @@ export const Tool = Object.freeze({
   DO_CONFIRMED_REQUEST: "do_confirmed_request",
   CANCEL_REQUEST: "cancel_request",
   RESUME_UNFINISHED: "resume_unfinished",
+  EMERGENCY_SOS: "emergency_sos",
 });
 
 export const NextMove = Object.freeze({
@@ -13,6 +14,7 @@ export const NextMove = Object.freeze({
   CONFIRM: "confirm",
   CANCEL: "cancel",
   DONE: "done",
+  SOS: "sos",
 });
 
 export const Speaker = Object.freeze({

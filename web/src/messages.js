@@ -7,6 +7,7 @@ export const SpeakerName = Object.freeze({
 
 export const Note = Object.freeze({
   ERROR: "Error",
+  ALERT: "Emergency alert",
   nextMove: (move) => `Next: ${move}`,
 });
 
@@ -41,3 +42,7 @@ const VOICE_ERRORS = Object.freeze({
 });
 
 export const voiceError = (code) => VOICE_ERRORS[code] ?? `Voice input stopped (${code}).`;
+
+export const SosLabel = Object.freeze({
+  countdown: (seconds) => `Emergency alert in ${seconds}… Say "stop" if you're okay.`,
+});
