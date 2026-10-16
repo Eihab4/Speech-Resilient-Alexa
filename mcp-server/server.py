@@ -1,4 +1,5 @@
 import re
+from threading import Event, Thread
 
 import uvicorn
 from fastmcp import Context, FastMCP
@@ -9,9 +10,11 @@ from starlette.routing import Route, WebSocketRoute
 
 from brain.factory import create_brain, create_summarizer
 from config import get_settings
+from location import create_geocoder
 from memory import History, SqliteMemoryStore
 from messages import ToolDescription
-from notify import create_notifier
+from notify import HelperLinker, create_bot, create_notifier
+from people import create_people_routes
 from speech import PollySynthesizer, create_speak_endpoint
 from tools.cancel_request import cancel_request as cancel
 from tools.do_confirmed_request import do_confirmed_request as do_confirmed
@@ -21,15 +24,32 @@ from tools.understand_speech import understand
 from transcription import create_transcribe_endpoint
 
 settings = get_settings()
+bot = create_bot(settings)
+
+
+def open_store() -> SqliteMemoryStore:
+    return SqliteMemoryStore(settings.memory.db_path, settings.memory.unfinished_ttl_hours)
 
 
 @lifespan
 async def resources(server: FastMCP):
-    store = SqliteMemoryStore(settings.memory.db_path, settings.memory.unfinished_ttl_hours)
+    store = open_store()
     history = History(
         store, create_summarizer(settings), settings.memory.recent_messages, settings.memory.summary_trigger_words
     )
-    yield {"brain": create_brain(settings), "store": store, "history": history, "notifier": create_notifier(settings)}
+    # Helpers link themselves by opening the bot; a background thread reads those messages, on its own connection.
+    stop, links = Event(), open_store()
+    if bot:
+        Thread(target=HelperLinker(bot, links).run, args=(stop,), daemon=True).start()
+    yield {
+        "brain": create_brain(settings),
+        "store": store,
+        "history": history,
+        "notifier": create_notifier(bot),
+        "geocoder": create_geocoder(settings),
+    }
+    stop.set()
+    links.close()
     store.close()
 
 
@@ -44,7 +64,7 @@ cors = Middleware(
     CORSMiddleware,
     allow_origin_regex=LOCAL_ORIGIN,
     allow_origins=settings.server.cors_origins,
-    allow_methods=["GET", "POST", "DELETE", "OPTIONS"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["*"],
     expose_headers=["Mcp-Session-Id"],
 )
@@ -81,16 +101,20 @@ def cancel_request(user_id: str, ctx: Context) -> dict:
 @mcp.tool(description=ToolDescription.EMERGENCY_SOS)
 def emergency_sos(user_id: str, ctx: Context, latitude: float | None = None, longitude: float | None = None) -> dict:
     r = ctx.lifespan_context
-    return send_sos(r["store"], r["notifier"], settings.sos, settings.memory.company_id, user_id, latitude, longitude)
+    return send_sos(
+        r["store"], r["notifier"], r["geocoder"], settings.sos, settings.memory.company_id, user_id, latitude, longitude
+    )
 
 
 def create_app():
-    """The MCP app at /mcp, plus the voice WebSocket, which FastMCP's own routes cannot express."""
+    """The MCP app at /mcp, plus the voice routes and the family's setup routes, which FastMCP's own routes
+    cannot express."""
     app = mcp.http_app(path=settings.server.path, transport=settings.server.transport, middleware=[cors])
     transcribe = create_transcribe_endpoint(settings.transcribe, is_allowed_origin)
     app.router.routes.append(WebSocketRoute(settings.transcribe.path, transcribe))
     speak = create_speak_endpoint(PollySynthesizer(settings.polly))
     app.router.routes.append(Route(settings.polly.path, speak, methods=["POST"]))
+    app.router.routes.extend(create_people_routes(open_store(), bot, settings.memory.company_id))
     return app
 
 

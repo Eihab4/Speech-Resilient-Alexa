@@ -4,6 +4,7 @@ from datetime import datetime
 
 from config.settings import SosSettings
 from enums import AlertStatus, NextMove
+from location import Geocoder
 from memory import Alert, Helper, MemoryStore, Profile, Turn
 from messages import MAP_URL, SOS_PHRASES, STOP_WORDS, AlertText, ErrorMessage, Reply
 from notify import Notifier, Position
@@ -31,6 +32,7 @@ def says_stop(heard: str) -> bool:
 def emergency_sos(
     store: MemoryStore,
     notifier: Notifier,
+    geocoder: Geocoder,
     settings: SosSettings,
     company_id: str,
     user_id: str,
@@ -44,7 +46,8 @@ def emergency_sos(
 
     position = None if latitude is None or longitude is None else Position(latitude=latitude, longitude=longitude)
     heard = " … ".join(_countdown_pieces(store, conversation))
-    text = alert_text(store.profile(company_id, user_id) or Profile(name=user_id), heard, position)
+    address = geocoder.address(position) if position else None
+    text = alert_text(store.profile(company_id, user_id) or Profile(name=user_id), heard, position, address)
     helpers = [helper for helper in store.helpers(company_id, user_id) if helper.linked]
     sent_to = [helper.name for helper in helpers if _deliver(notifier, helper, text, position)]
 
@@ -56,21 +59,22 @@ def emergency_sos(
         status = AlertStatus.SENT
         say = (Reply.SOS_SENT if position else Reply.SOS_SENT_NO_PLACE).format(who=_names(sent_to))
 
-    alert = Alert(heard=heard, latitude=latitude, longitude=longitude, text=text, status=status)
+    alert = Alert(heard=heard, latitude=latitude, longitude=longitude, address=address, text=text, status=status)
     store.add_alert(company_id, user_id, alert)
     return _finish(store, conversation, say, sent_to)
 
 
-def alert_text(profile: Profile, heard: str, position: Position | None) -> str:
+def alert_text(profile: Profile, heard: str, position: Position | None, address: str | None = None) -> str:
     if position:
-        where = AlertText.MAP.format(url=MAP_URL.format(latitude=position.latitude, longitude=position.longitude))
+        url = MAP_URL.format(latitude=position.latitude, longitude=position.longitude)
+        where = [AlertText.ADDRESS.format(address=address) if address else "", AlertText.MAP.format(url=url)]
     elif profile.home_address:
-        where = AlertText.HOME.format(address=profile.home_address)
+        where = [AlertText.HOME.format(address=profile.home_address)]
     else:
-        where = AlertText.NO_PLACE
+        where = [AlertText.NO_PLACE]
     said = AlertText.SAID.format(heard=heard) if heard else ""
     time = AlertText.TIME.format(time=datetime.now().astimezone().strftime("%H:%M"))
-    return "\n".join(filter(None, [AlertText.HEADER.format(name=profile.name), said, where, time]))
+    return "\n".join(filter(None, [AlertText.HEADER.format(name=profile.name), said, *where, time]))
 
 
 def _countdown_pieces(store: MemoryStore, conversation: int) -> list[str]:
