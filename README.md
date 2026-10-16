@@ -12,87 +12,13 @@ An Alexa+ add-on for people whose speech is slow, comes out in pieces, or needs 
 
 ## Architecture
 
-```mermaid
-flowchart TB
-    person(["Person with slow or broken speech"])
+![Architecture: clients, the MCP server, SQLite memory, AWS services, hosted LLMs and Telegram](docs/architecture.png)
 
-    subgraph clients["Clients: who calls the tools"]
-        direction LR
-        alexa["Alexa+<br/>the AI host"]
-        web["Browser page, web/<br/>mic · typing · voice · SOS countdown"]
-    end
+Dashed arrows are planned, not built yet. The picture is drawn from [docs/architecture.py](docs/architecture.py) with the official AWS icons; after a change, run it again (it needs Graphviz: `sudo apt install graphviz`):
 
-    subgraph server["MCP server, mcp-server/ · FastMCP over Streamable HTTP"]
-        direction LR
-        subgraph voice["Voice routes"]
-            direction TB
-            ws["/transcribe<br/>WebSocket"]
-            speak["/speak<br/>POST"]
-        end
-        subgraph tools["MCP tools at /mcp"]
-            direction TB
-            us["understand_speech"]
-            dcr["do_confirmed_request"]
-            cr["cancel_request"]
-            ru["resume_unfinished"]
-            es["emergency_sos"]
-        end
-        subgraph inside["Behind the tools"]
-            direction TB
-            words["Fixed words, before the brain<br/>yes · no · SOS · stop"]
-            brain["Brain and summarizer<br/>brain/ · messages/prompts/"]
-            actions["actions/<br/>simulated reminder · message · call"]
-            notify["notify/<br/>simulated, Telegram next"]
-        end
-    end
-
-    subgraph db["Memory: SQLite, data/memory.db"]
-        direction LR
-        t1["companies · users<br/>conversations"]
-        t2["requests · turns"]
-        t3["summaries · actions"]
-        t4["profiles · helpers<br/>alerts"]
-    end
-
-    subgraph aws["AWS · IAM user speech-resilient-alexa"]
-        direction LR
-        transcribe["Amazon Transcribe<br/>speech to text"]
-        polly["Amazon Polly<br/>neural voice"]
-        bedrock["Amazon Bedrock<br/>optional brain"]
-        location["Amazon Location<br/>address, next"]
-    end
-
-    subgraph llm["Hosted LLMs"]
-        direction LR
-        openrouter["OpenRouter"]
-        groq["Groq"]
-    end
-
-    telegram["Telegram Bot API, next"]
-    helper(["Helper's phone"])
-
-    person <-->|speaks, hears| clients
-    clients -->|tool calls| tools
-    web -->|mic audio| ws
-    web -->|reply text| speak
-    ws <--> transcribe
-    speak <--> polly
-    us --> words
-    us --> brain
-    dcr --> actions
-    es --> notify
-    tools <-->|every turn and request| db
-    brain --> llm
-    brain --> bedrock
-    es -.-> location
-    notify -.-> telegram
-    telegram -.-> helper
-
-    classDef next stroke-dasharray: 5 5
-    class location,telegram next
+```bash
+uv run --no-project --with diagrams python docs/architecture.py
 ```
-
-Dashed boxes are planned, not built yet.
 
 One turn, end to end, in the browser page:
 
