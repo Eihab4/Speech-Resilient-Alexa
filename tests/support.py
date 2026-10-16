@@ -1,4 +1,5 @@
 import asyncio
+import json
 import os
 import socket
 import subprocess
@@ -6,6 +7,8 @@ import sys
 import time
 from pathlib import Path
 from typing import Any
+from urllib.error import HTTPError
+from urllib.request import Request, urlopen
 
 import pytest
 from fastmcp import Client
@@ -66,3 +69,29 @@ def with_client(url: str, action) -> Any:
             return await action(client)
 
     return asyncio.run(run())
+
+
+def base_url(url: str) -> str:
+    """The server's root, from its /mcp URL, for the page's own routes."""
+    return url.removesuffix("/mcp")
+
+
+def http(url: str, method: str = "GET", body: Any = None, token: str | None = None) -> tuple[int, Any]:
+    request = Request(url, data=json.dumps(body).encode() if body is not None else None, method=method)
+    request.add_header("Content-Type", "application/json")
+    if token:
+        request.add_header("Authorization", f"Bearer {token}")
+    try:
+        with urlopen(request, timeout=10) as response:
+            return response.status, json.loads(response.read() or b"null")
+    except HTTPError as error:
+        return error.code, json.loads(error.read() or b"null")
+
+
+def sign_up(url: str, username: str = "ahmed", name: str = "Ahmed", password: str = "secret1") -> str:
+    """Creates an account on the server at url and returns its token."""
+    status, session = http(
+        f"{base_url(url)}/signup", "POST", {"username": username, "name": name, "password": password}
+    )
+    assert status == 201, session
+    return session["token"]
