@@ -241,5 +241,37 @@ class SqliteMemoryStore:
         )
         return [Alert(**row) for row in rows]
 
+    def create_account(self, company_id: str, username: str, password_hash: str) -> bool:
+        """False when the username already has an account. Memory saved under it before stays with it."""
+        row = self._db.execute(
+            "INSERT INTO accounts (user_id, password_hash, created_at) VALUES (?, ?, ?) "
+            "ON CONFLICT (user_id) DO NOTHING RETURNING user_id",
+            (self._user_id(company_id, username), password_hash, utc_now()),
+        ).fetchone()
+        return row is not None
+
+    def password_hash(self, company_id: str, username: str) -> str | None:
+        row = self._db.execute(
+            f"SELECT a.password_hash FROM accounts a {OF_USER.format(table='a')}", (company_id, username)
+        ).fetchone()
+        return row["password_hash"] if row else None
+
+    def add_session(self, company_id: str, username: str, token_hash: str) -> None:
+        self._db.execute(
+            "INSERT INTO sessions (token_hash, user_id, created_at) VALUES (?, ?, ?)",
+            (token_hash, self._user_id(company_id, username), utc_now()),
+        )
+
+    def session_user(self, company_id: str, token_hash: str) -> str | None:
+        row = self._db.execute(
+            "SELECT u.external_id FROM sessions s JOIN users u ON u.id = s.user_id "
+            "WHERE s.token_hash = ? AND u.company_id = ?",
+            (token_hash, company_id),
+        ).fetchone()
+        return row["external_id"] if row else None
+
+    def remove_session(self, token_hash: str) -> None:
+        self._db.execute("DELETE FROM sessions WHERE token_hash = ?", (token_hash,))
+
     def close(self) -> None:
         self._db.close()
