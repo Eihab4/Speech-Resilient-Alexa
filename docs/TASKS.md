@@ -22,7 +22,7 @@ Next to each tool is the service it uses. **Polly** and **the brain** (the LLM) 
 ### Setup (do first)
 
 - [ ] **AWS:** give the IAM user `speech-resilient-alexa` only what's used (SNS, Translate, Comprehend, Location). New accounts are in the SMS sandbox, so verify each demo phone number in the SNS console. If SMS doesn't work, use SNS email.
-- [ ] **Telegram (optional):** a free second channel for `notify`. Create a bot with BotFather, add `TELEGRAM_BOT_TOKEN` to settings, and a contacts list that maps names ("Sara", "my son") to chat ids.
+- [ ] **Telegram (needed for `emergency_sos`):** a free channel for `notify`. Create a bot with BotFather and add `TELEGRAM_BOT_TOKEN` to `.env`. Helpers link their chat id by opening the bot's link from the page. SMS to Egypt needs a registered sender ID, so Telegram is the main channel for the demo.
 
 ### Do first
 
@@ -37,7 +37,7 @@ Next to each tool is the service it uses. **Polly** and **the brain** (the LLM) 
 
 ### If there's time
 
-- [ ] **`emergency_sos`** — SNS, browser location: "help!", "I fell", "emergency". Sends an urgent alert with the location right away, without asking "yes". The trigger words must be hard to say by accident.
+- [ ] **`emergency_sos`** — Telegram, Location, browser location: "I fell", "help help", "emergency". Instead of asking "yes", Alexa counts down 5 seconds ("say stop if you're okay"), then sends every helper a Telegram alert with the address and a map pin. Silence sends it. Helpers are added from the page and link themselves by opening the bot. Details: [feature-emergency-sos.md](branches/feature-emergency-sos.md).
 - [ ] **`where_am_i`** — Location, browser location: says the current address (`ReverseGeocode`), then offers to send it to someone.
 - [ ] **`share_location`** — SNS, browser location: "send Sara my location" sends the contact a map pin.
 - [ ] **`find_nearby`** — Location, browser location: "nearest pharmacy?" answers with name, address and distance (`SearchNearby`).
