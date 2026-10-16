@@ -2,6 +2,7 @@ import pytest
 
 from config.settings import SosSettings
 from enums import AlertStatus, NextMove, RequestStatus
+from location import NoGeocoder
 from memory import Helper, Profile, SqliteMemoryStore
 from messages import Reply
 from support import with_client
@@ -213,7 +214,7 @@ def test_one_failing_helper_does_not_stop_the_others(store):
     set_up(store, Helper(name="Sara", telegram_chat_id="1"), Helper(name="Omar", telegram_chat_id="2"))
     notifier = FailingNotifier(failing={"Sara"})
 
-    result = emergency_sos(store, notifier, SosSettings(), "demo", "u1", **CAIRO)
+    result = emergency_sos(store, notifier, NoGeocoder(), SosSettings(), "demo", "u1", **CAIRO)
 
     assert result["sent_to"] == ["Omar"]
     assert notifier.reached == ["Omar"]
@@ -222,7 +223,7 @@ def test_one_failing_helper_does_not_stop_the_others(store):
 def test_when_every_helper_fails_alexa_says_so(store):
     set_up(store, Helper(name="Sara", telegram_chat_id="1"))
 
-    result = emergency_sos(store, FailingNotifier(failing={"Sara"}), SosSettings(), "demo", "u1", **CAIRO)
+    result = emergency_sos(store, FailingNotifier(failing={"Sara"}), NoGeocoder(), SosSettings(), "demo", "u1", **CAIRO)
 
     assert result == {"sent": False, "sent_to": [], "say": Reply.SOS_FAILED}
     assert store.alerts("demo", "u1")[0].status == AlertStatus.FAILED
@@ -230,8 +231,50 @@ def test_when_every_helper_fails_alexa_says_so(store):
 
 def test_a_failed_alert_can_be_tried_again_at_once(store):
     set_up(store, Helper(name="Sara", telegram_chat_id="1"))
-    emergency_sos(store, FailingNotifier(failing={"Sara"}), SosSettings(), "demo", "u1", **CAIRO)
+    emergency_sos(store, FailingNotifier(failing={"Sara"}), NoGeocoder(), SosSettings(), "demo", "u1", **CAIRO)
 
-    retry = emergency_sos(store, FailingNotifier(failing=set()), SosSettings(), "demo", "u1", **CAIRO)
+    retry = emergency_sos(store, FailingNotifier(failing=set()), NoGeocoder(), SosSettings(), "demo", "u1", **CAIRO)
 
     assert retry["sent_to"] == ["Sara"]
+
+
+class FakeGeocoder:
+    def __init__(self, address):
+        self.answer, self.asked = address, []
+
+    def address(self, position):
+        self.asked.append(position)
+        return self.answer
+
+
+def test_the_alert_gives_the_address_amazon_location_found(store):
+    set_up(store, Helper(name="Sara", telegram_chat_id="1"))
+    geocoder = FakeGeocoder("Tahrir Square, Cairo, Egypt")
+
+    emergency_sos(store, FailingNotifier(failing=set()), geocoder, SosSettings(), "demo", "u1", **CAIRO)
+    [alert] = store.alerts("demo", "u1")
+
+    assert "Where: Tahrir Square, Cairo, Egypt\nMap: https://maps.google.com/?q=30.0444,31.2357" in alert.text
+    assert alert.address == "Tahrir Square, Cairo, Egypt"
+
+
+def test_without_an_address_the_alert_still_goes_with_the_map(store):
+    set_up(store, Helper(name="Sara", telegram_chat_id="1"))
+
+    result = emergency_sos(
+        store, FailingNotifier(failing=set()), FakeGeocoder(None), SosSettings(), "demo", "u1", **CAIRO
+    )
+    [alert] = store.alerts("demo", "u1")
+
+    assert result["sent_to"] == ["Sara"]
+    assert "Where:" not in alert.text
+    assert "Map: https://maps.google.com/?q=30.0444,31.2357" in alert.text
+
+
+def test_no_position_means_no_address_lookup(store):
+    set_up(store, Helper(name="Sara", telegram_chat_id="1"))
+    geocoder = FakeGeocoder("anywhere")
+
+    emergency_sos(store, FailingNotifier(failing=set()), geocoder, SosSettings(), "demo", "u1")
+
+    assert geocoder.asked == []

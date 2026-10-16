@@ -132,3 +132,23 @@ def test_helpers_belong_to_one_person_and_link_with_their_code(store):
     assert linked.telegram_chat_id == "12345"
     assert store.helpers("acme", "u1")[0].linked
     assert store.link_helper("not-a-code", "999") is None
+
+
+def test_a_used_link_cannot_be_taken_by_another_chat(store):
+    sara = store.add_helper("acme", "u1", Helper(name="Sara"))
+    store.link_helper(sara.link_code, "12345")
+
+    again = store.link_helper(sara.link_code, "12345")
+    stolen = store.link_helper(sara.link_code, "666")
+
+    assert again.telegram_chat_id == "12345"
+    assert stolen is None
+    assert store.helpers("acme", "u1")[0].telegram_chat_id == "12345"
+
+
+def test_a_helper_is_removed_only_by_their_own_person(store):
+    sara = store.add_helper("acme", "u1", Helper(name="Sara"))
+
+    assert store.remove_helper("acme", "u2", sara.id) is False
+    assert store.remove_helper("acme", "u1", sara.id) is True
+    assert store.helpers("acme", "u1") == []
