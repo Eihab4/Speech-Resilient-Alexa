@@ -71,6 +71,7 @@ def test_env_example_lists_every_setting():
         "server": "MCP_",
         "llm": "LLM_",
         "memory": "MEMORY_",
+        "sos": "SOS_",
         "bedrock": "BEDROCK_",
         "openrouter": "OPENROUTER_",
         "groq": "GROQ_",

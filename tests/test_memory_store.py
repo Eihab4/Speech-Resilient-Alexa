@@ -3,7 +3,7 @@ import sqlite3
 import pytest
 
 from enums import NextMove, RequestStatus
-from memory import Request, SqliteMemoryStore, Turn
+from memory import Helper, Profile, Request, SqliteMemoryStore, Turn
 
 
 @pytest.fixture
@@ -112,3 +112,23 @@ def test_conversation_for_reuses_the_latest_one(store):
 
     assert store.conversation_for("acme", "u1") == first
     assert store.conversation_for("acme", "u2") != first
+
+
+def test_a_profile_is_saved_once_per_person_and_updated_in_place(store):
+    store.save_profile("acme", "u1", Profile(name="Ahmed"))
+    store.save_profile("acme", "u1", Profile(name="Ahmed Ali", home_address="12 Tahrir St"))
+
+    assert store.profile("acme", "u1") == Profile(name="Ahmed Ali", home_address="12 Tahrir St")
+    assert store.profile("acme", "u2") is None
+
+
+def test_helpers_belong_to_one_person_and_link_with_their_code(store):
+    sara = store.add_helper("acme", "u1", Helper(name="Sara"))
+    store.add_helper("acme", "u2", Helper(name="Omar"))
+
+    linked = store.link_helper(sara.link_code, "12345")
+
+    assert [helper.name for helper in store.helpers("acme", "u1")] == ["Sara"]
+    assert linked.telegram_chat_id == "12345"
+    assert store.helpers("acme", "u1")[0].linked
+    assert store.link_helper("not-a-code", "999") is None
