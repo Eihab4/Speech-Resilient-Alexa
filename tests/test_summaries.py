@@ -157,3 +157,14 @@ def test_the_real_llm_summarizes_and_uses_the_history():
 
     assert "mom" in summary.lower()
     assert "mom" in str(result.details).lower()
+
+
+def test_the_history_tidy_up_can_be_waited_for_before_closing(store):
+    conversation = store.start_conversation("acme", "u1")
+    finished_request(store, conversation, [("call mom", "Call Mom?"), ("yes", "Okay.")])
+    history = History(store, MockSummarizer(1), recent_messages=0, summary_trigger_words=1)
+
+    history.maintain_later(conversation)
+    history.wait(timeout=10)
+
+    assert store.summary(conversation).text

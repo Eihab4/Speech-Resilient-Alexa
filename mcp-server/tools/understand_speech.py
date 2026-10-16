@@ -1,5 +1,3 @@
-from threading import Thread
-
 from brain.base import Brain
 from brain.schemas import BrainResult
 from enums import NextMove, RequestStatus
@@ -87,7 +85,7 @@ def understand(
     store.add_turn(
         conversation, Turn(request_id=turn_request_id, heard=fragment, say=result.say, next_move=result.next_move)
     )
-    Thread(target=history.maintain, args=(conversation,), daemon=True).start()
+    history.maintain_later(conversation)
     return {**result.model_dump(), "pending_id": request.id}
 
 

@@ -1,4 +1,5 @@
 import sqlite3
+from concurrent.futures import ThreadPoolExecutor
 
 import pytest
 
@@ -152,3 +153,17 @@ def test_a_helper_is_removed_only_by_their_own_person(store):
     assert store.remove_helper("acme", "u2", sara.id) is False
     assert store.remove_helper("acme", "u1", sara.id) is True
     assert store.helpers("acme", "u1") == []
+
+
+def test_many_threads_can_use_one_store_at_once(store):
+    # The tools run in a thread pool and share one connection; each call opens its own transaction.
+    def visit(n):
+        conversation = store.start_conversation("acme", f"u{n % 5}")
+        store.add_turn(conversation, Turn(heard=f"piece {n}", say="ok", next_move=NextMove.LISTEN))
+        store.save_profile("acme", f"u{n % 5}", Profile(name=f"Person {n}"))
+        return store.turns(conversation)
+
+    with ThreadPoolExecutor(max_workers=16) as pool:
+        results = list(pool.map(visit, range(200)))
+
+    assert all(results)

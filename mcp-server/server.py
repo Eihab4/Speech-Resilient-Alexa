@@ -49,6 +49,8 @@ async def resources(server: FastMCP):
         "geocoder": create_geocoder(settings),
     }
     stop.set()
+    # A summary may still be being written; closing the store under it can crash SQLite.
+    history.wait(timeout=10)
     links.close()
     store.close()
 
