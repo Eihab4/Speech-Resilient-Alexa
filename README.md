@@ -10,6 +10,134 @@ An Alexa+ add-on for people whose speech is slow, comes out in pieces, or needs 
 - Where MCP is imported and called: `mcp-server/server.py`.
 - Uses the real OpenRouter brain by default. Add `OPENROUTER_API_KEY` to `.env` before starting it.
 
+## Architecture
+
+```mermaid
+flowchart TB
+    person(["Person with slow or broken speech"])
+
+    subgraph clients["Clients: who calls the tools"]
+        direction LR
+        alexa["Alexa+<br/>the AI host"]
+        web["Browser page, web/<br/>mic · typing · voice · SOS countdown"]
+    end
+
+    subgraph server["MCP server, mcp-server/ · FastMCP over Streamable HTTP"]
+        direction LR
+        subgraph voice["Voice routes"]
+            direction TB
+            ws["/transcribe<br/>WebSocket"]
+            speak["/speak<br/>POST"]
+        end
+        subgraph tools["MCP tools at /mcp"]
+            direction TB
+            us["understand_speech"]
+            dcr["do_confirmed_request"]
+            cr["cancel_request"]
+            ru["resume_unfinished"]
+            es["emergency_sos"]
+        end
+        subgraph inside["Behind the tools"]
+            direction TB
+            words["Fixed words, before the brain<br/>yes · no · SOS · stop"]
+            brain["Brain and summarizer<br/>brain/ · messages/prompts/"]
+            actions["actions/<br/>simulated reminder · message · call"]
+            notify["notify/<br/>simulated, Telegram next"]
+        end
+    end
+
+    subgraph db["Memory: SQLite, data/memory.db"]
+        direction LR
+        t1["companies · users<br/>conversations"]
+        t2["requests · turns"]
+        t3["summaries · actions"]
+        t4["profiles · helpers<br/>alerts"]
+    end
+
+    subgraph aws["AWS · IAM user speech-resilient-alexa"]
+        direction LR
+        transcribe["Amazon Transcribe<br/>speech to text"]
+        polly["Amazon Polly<br/>neural voice"]
+        bedrock["Amazon Bedrock<br/>optional brain"]
+        location["Amazon Location<br/>address, next"]
+    end
+
+    subgraph llm["Hosted LLMs"]
+        direction LR
+        openrouter["OpenRouter"]
+        groq["Groq"]
+    end
+
+    telegram["Telegram Bot API, next"]
+    helper(["Helper's phone"])
+
+    person <-->|speaks, hears| clients
+    clients -->|tool calls| tools
+    web -->|mic audio| ws
+    web -->|reply text| speak
+    ws <--> transcribe
+    speak <--> polly
+    us --> words
+    us --> brain
+    dcr --> actions
+    es --> notify
+    tools <-->|every turn and request| db
+    brain --> llm
+    brain --> bedrock
+    es -.-> location
+    notify -.-> telegram
+    telegram -.-> helper
+
+    classDef next stroke-dasharray: 5 5
+    class location,telegram next
+```
+
+Dashed boxes are planned, not built yet.
+
+One turn, end to end, in the browser page:
+
+```mermaid
+sequenceDiagram
+    actor P as Person
+    participant W as Browser page
+    participant T as Amazon Transcribe
+    participant S as MCP server
+    participant B as Brain (LLM)
+    participant M as SQLite
+    participant V as Amazon Polly
+
+    P->>W: "doctor… ten" (then a pause)
+    W->>S: mic audio over /transcribe
+    S->>T: audio stream
+    T-->>S: text
+    S-->>W: "doctor ten"
+    W->>S: understand_speech("doctor ten")
+    S->>M: earlier pieces and history
+    S->>B: pieces + history
+    B-->>S: reminder, doctor, 10:00 · next move: confirm
+    S->>M: save the turn and the request
+    S-->>W: "Should I set a reminder for your doctor…?"
+    W->>S: /speak
+    S->>V: text
+    V-->>W: audio
+    W-->>P: Alexa asks
+```
+
+What each part does:
+
+| Part | What it does |
+| ---- | ------------ |
+| **Browser page** (`web/`) | Plays Alexa's part for the demo. It sends each spoken or typed piece to `understand_speech`, makes the follow-up call (`do_confirmed_request`, `cancel_request`, `emergency_sos`), and speaks the reply. If Transcribe or Polly can't be reached, it falls back to the browser's own speech recognition and voice. |
+| **Alexa+** | The real host. It calls the same MCP tools, so nothing changes on the server. |
+| **MCP tools** (`tools/`) | One file per tool. Each turn's words go to `understand_speech`, which keeps the pieces and decides the next move. |
+| **Fixed words** (`messages/vocabulary.py`) | Yes, no, SOS and stop are checked without the brain, so they work even when the LLM is down. |
+| **Brain** (`brain/`) | An LLM that guesses the request from the pieces and the history. OpenRouter, Groq or Bedrock, picked by `LLM_PROVIDER`; the mock brain replays recorded answers in tests. |
+| **Memory** (`memory/`, SQLite) | Every turn, the request in progress, a summary of older chat, what Alexa did, and the people who get emergency alerts. Details in [docs/memory.md](docs/memory.md). |
+| **Amazon Transcribe** | Turns the microphone into text, behind the server's `/transcribe` WebSocket, so AWS keys never reach the browser. |
+| **Amazon Polly** | Alexa's voice, behind the server's `/speak` route. |
+| **Amazon Location** | Will turn the alert's coordinates into an address. |
+| **Telegram** | Will deliver emergency alerts to helpers, with a map pin. |
+
 ## Run it
 
 ```bash
@@ -56,6 +184,8 @@ The microphone streams to the server's `/transcribe` WebSocket, which passes it 
 
 Alexa reads every reply aloud. The text goes to the server's `/speak` route, which returns **Amazon Polly** audio (`POLLY_VOICE_ID`, `POLLY_ENGINE`); without AWS credentials the page uses the browser's own voice instead, so there is nothing to set up. The microphone pauses while she talks and comes back when she finishes. **Mute Alexa** turns the voice off; pressing it mid-reply cuts her off at once.
 
+Say "I fell", "help help" or "emergency" and a red countdown starts. Say "stop" to cancel it; stay silent and the alert goes to the person's helpers. Until Telegram is connected, the alert is written to the server log. Details: [feature-emergency-sos.md](docs/branches/feature-emergency-sos.md).
+
 The server accepts browser calls from any `localhost` port. To allow another page, add its URL to `MCP_CORS_ORIGINS`.
 
 ## Tools
@@ -66,6 +196,7 @@ The server accepts browser calls from any `localhost` port. To allow another pag
 | `do_confirmed_request` | Carries out a request. Refuses unless the person clearly said yes.                                     |
 | `cancel_request`       | Drops the request in progress.                                                                         |
 | `resume_unfinished`    | At the start of a session, offers back a request left unfinished last time.                            |
+| `emergency_sos`        | Sends the person's helpers an emergency alert with where they are, after a countdown nobody stopped.   |
 
 ## Settings
 
@@ -79,6 +210,8 @@ Everything is read from environment variables. `.env.example` lists every settin
 | `MEMORY_UNFINISHED_TTL_HOURS`  | How long an unfinished request is offered back                        |
 | `MEMORY_RECENT_MESSAGES`       | How many recent messages the brain always sees in full                |
 | `MEMORY_SUMMARY_TRIGGER_WORDS` | How long the history can get before older parts are summarized        |
+| `SOS_COUNTDOWN_SECONDS`        | How long Alexa waits for "stop" before sending an emergency alert     |
+| `SOS_COOLDOWN_MINUTES`         | How soon the same emergency alert can be sent again                   |
 
 To use a real model, set `LLM_PROVIDER=openrouter` and `OPENROUTER_API_KEY`, `LLM_PROVIDER=groq` and `GROQ_API_KEY` (Groq has a free tier), or `LLM_PROVIDER=bedrock` with AWS credentials.
 
@@ -109,6 +242,7 @@ mcp-server/
   brain/        the LLM brain, the mock brain, the summarizer, one client per provider
   memory/       SQLite store, history and summaries
   actions/      simulated reminder, message and call
+  notify/       the one way messages leave the server (emergency alerts)
   tools/        one file per MCP tool
   utils/        ids and time
 data/           recorded answers for mock mode

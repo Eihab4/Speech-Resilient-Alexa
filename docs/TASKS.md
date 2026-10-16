@@ -22,7 +22,9 @@ Next to each tool is the service it uses. **Polly** and **the brain** (the LLM) 
 ### Setup (do first)
 
 - [ ] **AWS:** give the IAM user `speech-resilient-alexa` only what's used (SNS, Translate, Comprehend, Location). New accounts are in the SMS sandbox, so verify each demo phone number in the SNS console. If SMS doesn't work, use SNS email.
-- [ ] **Telegram (needed for `emergency_sos`):** a free channel for `notify`. Create a bot with BotFather and add `TELEGRAM_BOT_TOKEN` to `.env`. Helpers link their chat id by opening the bot's link from the page. SMS to Egypt needs a registered sender ID, so Telegram is the main channel for the demo.
+  - [x] **Location:** inline policy `LocationReverseGeocode`, allowing only `geo-places:ReverseGeocode`. Add `geo-places:SearchNearby` to it for `find_nearby`.
+  - [ ] SNS, Translate, Comprehend.
+- [x] **Telegram (needed for `emergency_sos`):** a free channel for `notify`. The bot is `@rana_sra_alerts_bot`, with `TELEGRAM_BOT_TOKEN` in `.env`. Helpers link their chat id by opening the bot's link from the page. SMS to Egypt needs a registered sender ID, so Telegram is the main channel for the demo.
 
 ### Do first
 
