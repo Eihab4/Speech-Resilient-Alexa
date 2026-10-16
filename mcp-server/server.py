@@ -11,9 +11,11 @@ from brain.factory import create_brain, create_summarizer
 from config import get_settings
 from memory import History, SqliteMemoryStore
 from messages import ToolDescription
+from notify import create_notifier
 from speech import PollySynthesizer, create_speak_endpoint
 from tools.cancel_request import cancel_request as cancel
 from tools.do_confirmed_request import do_confirmed_request as do_confirmed
+from tools.emergency_sos import emergency_sos as send_sos
 from tools.resume_unfinished import resume_unfinished as resume
 from tools.understand_speech import understand
 from transcription import create_transcribe_endpoint
@@ -27,7 +29,7 @@ async def resources(server: FastMCP):
     history = History(
         store, create_summarizer(settings), settings.memory.recent_messages, settings.memory.summary_trigger_words
     )
-    yield {"brain": create_brain(settings), "store": store, "history": history}
+    yield {"brain": create_brain(settings), "store": store, "history": history, "notifier": create_notifier(settings)}
     store.close()
 
 
@@ -56,7 +58,9 @@ def is_allowed_origin(origin: str | None) -> bool:
 @mcp.tool(description=ToolDescription.UNDERSTAND_SPEECH)
 def understand_speech(user_id: str, heard: str, ctx: Context) -> dict:
     r = ctx.lifespan_context
-    return understand(r["brain"], r["store"], r["history"], settings.memory.company_id, user_id, heard)
+    return understand(
+        r["brain"], r["store"], r["history"], settings.memory.company_id, user_id, heard, settings.sos.countdown_seconds
+    )
 
 
 @mcp.tool(description=ToolDescription.DO_CONFIRMED_REQUEST)
@@ -72,6 +76,12 @@ def resume_unfinished(user_id: str, ctx: Context) -> dict:
 @mcp.tool(description=ToolDescription.CANCEL_REQUEST)
 def cancel_request(user_id: str, ctx: Context) -> dict:
     return cancel(ctx.lifespan_context["store"], settings.memory.company_id, user_id)
+
+
+@mcp.tool(description=ToolDescription.EMERGENCY_SOS)
+def emergency_sos(user_id: str, ctx: Context, latitude: float | None = None, longitude: float | None = None) -> dict:
+    r = ctx.lifespan_context
+    return send_sos(r["store"], r["notifier"], settings.sos, settings.memory.company_id, user_id, latitude, longitude)
 
 
 def create_app():
