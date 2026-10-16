@@ -14,6 +14,16 @@ class Reply(StrEnum):
     DONE = "Done. {result}"
     RESUME = "You didn't finish your {intent} last time. Want to pick it up?"
     GENERIC_INTENT = "request"
+    SOS_COUNTDOWN = "I'll send an emergency alert in {seconds} seconds. Say stop if you're okay."
+    SOS_KEEP_CALM = "Help is coming in a moment. Say stop if you're okay."
+    SOS_STOPPED = "Okay, I won't send it. I'm here if you need me."
+    SOS_STOPPED_BACK = "Okay, I won't send it. {question}"
+    SOS_SENT = "I sent {who} an alert with where you are. I'm staying with you."
+    SOS_SENT_NO_PLACE = "I sent {who} an alert. I'm staying with you."
+    SOS_ALREADY_SENT = "I already sent the alert a moment ago. I'm staying with you."
+    SOS_NO_HELPER = "I can't reach anyone, because no helper is set up yet. Please call the emergency number."
+    SOS_FAILED = "I couldn't send the alert. Please call the emergency number."
+    AND = "and"
 
 
 ACTION_RESULTS = {

@@ -7,3 +7,5 @@ class ErrorMessage(StrEnum):
     LLM_UNREACHABLE = "Could not reach {provider}"
     SPEECH_TEXT_MISSING = "text is required"
     SPEECH_UNAVAILABLE = "Amazon Polly is unavailable"
+    ALERT_NOT_DELIVERED = "Could not send the emergency alert to {helper}"
+    ALERT_SIMULATED = "Simulated emergency alert to {helper}:\n{text}"
