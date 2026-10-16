@@ -26,8 +26,6 @@ Next to each tool is the service it uses. **Polly** and **the brain** (the LLM) 
 
 ### Do first
 
-- [ ] **`say_it_for_me`** — Polly, brain: the person says it in pieces, and Alexa says it clearly to whoever is in front of them ("I need my blood pressure medicine").
-- [ ] **`say_it_simpler`** — Polly, brain, memory: "I didn't understand". Alexa repeats her last reply in simpler, shorter words, and speaks it slower.
 - [ ] **`ask_for_help`** — SNS, memory: when the person says "help", or Alexa still hasn't understood after a few tries, the caregiver gets what was understood so far ("Dad is trying to set a reminder for the doctor tomorrow, the time is unclear"). In the demo, a teammate's phone gets the SMS live.
 - [ ] **`speech_trend`** — memory only: how many tries Alexa needed per request, day by day ("4 tries on day one, 1 now"). Goes with **Usual requests** in Memory: together they show Alexa learns the person over time.
 - [ ] **`speech_practice`** — Transcribe, memory: daily speech exercises. Alexa gives words to say, scores each one from Transcribe's confidence per word, and tracks progress with `speech_trend`. For people recovering after a stroke. Today the server only passes the text on, so `transcription/stream.py` must also pass the confidence.
@@ -44,6 +42,8 @@ Next to each tool is the service it uses. **Polly** and **the brain** (the LLM) 
 - [ ] **`share_location`** — SNS, browser location: "send Sara my location" sends the contact a map pin.
 - [ ] **`find_nearby`** — Location, browser location: "nearest pharmacy?" answers with name, address and distance (`SearchNearby`).
 - [ ] **`what_did_i_ask`** — memory only: "what did I ask for today?"
+- [ ] **`say_it_for_me`** — Polly, brain: the person says it in pieces, and Alexa says it clearly to whoever is in front of them ("I need my blood pressure medicine").
+- [ ] **`say_it_simpler`** — Polly, brain, memory: "I didn't understand". Alexa repeats her last reply in simpler, shorter words, and speaks it slower.
 
 ### Not now (timers or heavy setup)
 
