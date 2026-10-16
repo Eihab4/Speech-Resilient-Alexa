@@ -60,3 +60,12 @@ export const PeopleLabel = Object.freeze({
   LOCATION_OFF: "No location from this device: alerts will give the home address instead.",
   sendLink: (name) => `Send ${name} this link. Once they open it and press Start, they get the alerts.`,
 });
+
+export const PersonLabel = Object.freeze({
+  hello: (name) => `Hi, ${name}`,
+});
+
+// What Alexa says when someone signs in.
+export const Greeting = Object.freeze({
+  hello: (name) => `Hi ${name}! Take your time, I'm listening.`,
+});

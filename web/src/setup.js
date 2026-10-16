@@ -4,9 +4,9 @@ import { addHelper, listHelpers, loadProfile, removeHelper, saveProfile } from "
 import { readPosition } from "./position.js";
 
 // "People who help me": done once by the family, not by voice.
-export function setupPeople(section, getUserId) {
+export function setupPeople(section, getSession) {
+  const token = () => getSession()?.token ?? "";
   const profileForm = section.querySelector("#profile-form");
-  const nameInput = section.querySelector("#profile-name");
   const addressInput = section.querySelector("#profile-address");
   const helperForm = section.querySelector("#helper-form");
   const helperName = section.querySelector("#helper-name");
@@ -50,7 +50,7 @@ export function setupPeople(section, getUserId) {
       });
       item.append(hint, link, copy);
     }
-    item.append(button(PeopleLabel.REMOVE, () => run(() => removeHelper(getUserId(), helper.id).then(refreshHelpers))));
+    item.append(button(PeopleLabel.REMOVE, () => run(() => removeHelper(token(), helper.id).then(refreshHelpers))));
     return item;
   }
 
@@ -64,9 +64,8 @@ export function setupPeople(section, getUserId) {
 
   async function refreshHelpers() {
     clearTimeout(refresh);
-    const userId = getUserId();
-    if (!userId || !section.open) return;
-    const { telegram, helpers } = await listHelpers(userId);
+    if (!token() || !section.open) return;
+    const { telegram, helpers } = await listHelpers(token());
     list.replaceChildren(...helpers.map(helperItem));
     show(telegram ? "" : PeopleLabel.NO_TELEGRAM);
     // Keep checking while someone hasn't opened their link, so "linked" shows up on its own.
@@ -74,10 +73,8 @@ export function setupPeople(section, getUserId) {
   }
 
   async function loadAll() {
-    const userId = getUserId();
-    if (!userId || !section.open) return;
-    const profile = await loadProfile(userId);
-    nameInput.value = profile.name ?? "";
+    if (!token() || !section.open) return;
+    const profile = await loadProfile(token());
     addressInput.value = profile.home_address ?? "";
     await refreshHelpers();
   }
@@ -87,7 +84,7 @@ export function setupPeople(section, getUserId) {
   profileForm.addEventListener("submit", (event) => {
     event.preventDefault();
     run(async () => {
-      await saveProfile(getUserId(), nameInput.value.trim(), addressInput.value.trim());
+      await saveProfile(token(), getSession().name, addressInput.value.trim());
       show(PeopleLabel.SAVED);
     });
   });
@@ -95,7 +92,7 @@ export function setupPeople(section, getUserId) {
   helperForm.addEventListener("submit", (event) => {
     event.preventDefault();
     run(async () => {
-      await addHelper(getUserId(), helperName.value.trim());
+      await addHelper(token(), helperName.value.trim());
       helperName.value = "";
       await refreshHelpers();
     });
@@ -106,5 +103,13 @@ export function setupPeople(section, getUserId) {
     show((await readPosition()) ? PeopleLabel.LOCATION_ON : PeopleLabel.LOCATION_OFF);
   });
 
-  return { reload: () => run(loadAll) };
+  return {
+    reload: () => run(loadAll),
+    close() {
+      section.open = false;
+      list.replaceChildren();
+      addressInput.value = "";
+      show("");
+    },
+  };
 }
