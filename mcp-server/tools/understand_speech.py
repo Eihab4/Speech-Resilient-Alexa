@@ -5,6 +5,7 @@ from brain.schemas import BrainResult
 from enums import NextMove, RequestStatus
 from memory import History, MemoryStore, Request, Turn
 from messages import NO_WORDS, YES_WORDS, Reply
+from pacing import Pacing
 from tools.emergency_sos import asks_for_sos, says_stop
 
 
@@ -44,7 +45,10 @@ def understand(
     user_id: str,
     heard: str,
     countdown_seconds: int,
+    pacing: Pacing,
+    pauses_ms: list[int] | None = None,
 ) -> dict:
+    """pauses_ms: the pauses the host measured inside this piece, between the bits it joined together."""
     fragment = heard.strip()
     if not fragment:
         return BrainResult(next_move=NextMove.LISTEN, say=Reply.STILL_LISTENING).model_dump()
@@ -66,14 +70,19 @@ def understand(
 
     # Checked before the brain, so an emergency is caught even when the LLM is down or slow.
     if (emergency := _emergency(now, countdown_seconds)) is not None:
-        return emergency
+        return {**emergency, "wait_seconds": pacing.wait(company_id, user_id)}
 
     step = _decide(now)
     store.save_request(conversation, step.request)
     turn = Turn(request_id=step.request_id, heard=step.heard, say=step.result.say, next_move=step.result.next_move)
     store.add_turn(conversation, turn)
     history.maintain_later(conversation)
-    return {**step.result.model_dump(), "pending_id": step.request.id}
+    # Alexa said "go on" and the person went on with the same request: she answered before they had finished.
+    answered_too_early = (
+        now.last is not None and now.last.next_move == NextMove.LISTEN and now.last.request_id == step.request_id
+    )
+    wait = pacing.learn(company_id, user_id, pauses_ms or [], answered_too_early)
+    return {**step.result.model_dump(), "pending_id": step.request.id, "wait_seconds": wait}
 
 
 def _emergency(now: Moment, countdown_seconds: int) -> dict | None:

@@ -56,6 +56,23 @@ class SosSettings(Section):
     cooldown_minutes: float = 2
 
 
+class PauseSettings(Section):
+    """How long Alexa waits after the person stops talking before she answers, learned per person."""
+
+    model_config = SettingsConfigDict(env_prefix="PAUSE_")
+
+    start_seconds: float = 2
+    min_seconds: float = 1.5
+    max_seconds: float = 6
+    # Added each time Alexa answered before the person had finished, until enough pauses are measured.
+    step_seconds: float = 0.5
+    # A longer pause isn't a pause in a sentence (a cough, someone talking to them), so it isn't counted.
+    ignore_over_seconds: float = 10
+    keep: int = 20
+    min_samples: int = 5
+    margin: float = 1.2
+
+
 class TelegramSettings(Section):
     model_config = SettingsConfigDict(env_prefix="TELEGRAM_")
 
@@ -135,6 +152,7 @@ class Settings(BaseModel):
     mock: MockSettings = Field(default_factory=MockSettings)
     memory: MemorySettings = Field(default_factory=MemorySettings)
     sos: SosSettings = Field(default_factory=SosSettings)
+    pause: PauseSettings = Field(default_factory=PauseSettings)
     telegram: TelegramSettings = Field(default_factory=TelegramSettings)
     location: LocationSettings = Field(default_factory=LocationSettings)
     bedrock: BedrockSettings = Field(default_factory=BedrockSettings)
