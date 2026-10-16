@@ -8,6 +8,11 @@ body {
   margin: 0;
 }
 
+/* Our own display rules (form is a grid) would otherwise beat the hidden attribute. */
+[hidden] {
+  display: none !important;
+}
+
 main {
   box-sizing: border-box;
   width: min(680px, 100%);
@@ -186,4 +191,41 @@ button.secondary[aria-pressed="true"] {
 
 .helper .waiting {
   color: #9a6400;
+}
+
+.person {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 12px;
+  margin: 32px 0 0;
+  font-size: 1.3rem;
+  font-weight: 700;
+}
+
+button.link {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: #6b54d9;
+  font-size: 0.95rem;
+  font-weight: 400;
+  text-decoration: underline;
+}
+
+.account form {
+  max-width: 420px;
+}
+
+.account h2 {
+  margin: 0;
+}
+
+label small {
+  color: #616b79;
+  font-weight: 400;
+}
+
+.error {
+  color: #c62828;
 }

@@ -2,13 +2,12 @@ import json
 import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from threading import Thread
-from urllib.error import HTTPError
 from urllib.request import Request, urlopen
 
 import pytest
 
 from messages import ErrorMessage, Reply, TelegramText
-from support import with_client
+from support import base_url, http, sign_up, with_client
 
 CAIRO = {"latitude": 30.0444, "longitude": 31.2357}
 BOT = "sra_test_bot"
@@ -75,20 +74,6 @@ def linked_server(server, telegram):
     return start
 
 
-def base(url):
-    return url.removesuffix("/mcp")
-
-
-def http(url, method="GET", body=None):
-    request = Request(url, data=json.dumps(body).encode() if body is not None else None, method=method)
-    request.add_header("Content-Type", "application/json")
-    try:
-        with urlopen(request, timeout=10) as response:
-            return response.status, json.loads(response.read() or b"null")
-    except HTTPError as error:
-        return error.code, json.loads(error.read() or b"null")
-
-
 def wait_for(check, timeout=10):
     deadline = time.monotonic() + timeout
     while time.monotonic() < deadline:
@@ -111,10 +96,14 @@ def open_link(telegram, helper, chat_id=555, update_id=1):
     return wait_for(lambda: [m for m in telegram.sent("sendMessage") if m["chat_id"] == str(chat_id)])
 
 
-def test_a_new_helper_gets_a_link_to_the_bot(linked_server):
-    url = base(linked_server())
+def add_helper(url, token, name="Sara"):
+    return http(f"{base_url(url)}/helpers", "POST", {"name": name}, token)
 
-    status, helper = http(f"{url}/helpers", "POST", {"user_id": "u1", "name": "Sara"})
+
+def test_a_new_helper_gets_a_link_to_the_bot(linked_server):
+    url = linked_server()
+
+    status, helper = add_helper(url, sign_up(url))
 
     assert status == 201
     assert helper["name"] == "Sara"
@@ -123,23 +112,25 @@ def test_a_new_helper_gets_a_link_to_the_bot(linked_server):
 
 
 def test_opening_the_link_links_the_helper_and_the_bot_says_so(linked_server, telegram):
-    url = base(linked_server())
-    _, helper = http(f"{url}/helpers", "POST", {"user_id": "u1", "name": "Sara"})
+    url = linked_server()
+    token = sign_up(url)
+    _, helper = add_helper(url, token)
 
     [reply] = open_link(telegram, helper)
-    _, listed = http(f"{url}/helpers?user_id=u1")
+    _, listed = http(f"{base_url(url)}/helpers", token=token)
 
     assert reply["text"] == TelegramText.LINKED.format(name="Sara")
     assert listed == {"telegram": True, "helpers": [{"id": helper["id"], "name": "Sara", "linked": True, "link": None}]}
 
 
 def test_a_wrong_link_links_nobody(linked_server, telegram):
-    url = base(linked_server())
-    http(f"{url}/helpers", "POST", {"user_id": "u1", "name": "Sara"})
+    url = linked_server()
+    token = sign_up(url)
+    add_helper(url, token)
 
     telegram.updates.append({"update_id": 1, "message": {"chat": {"id": 777}, "text": "/start not-a-code"}})
     [reply] = wait_for(lambda: telegram.sent("sendMessage"))
-    _, listed = http(f"{url}/helpers?user_id=u1")
+    _, listed = http(f"{base_url(url)}/helpers", token=token)
 
     assert reply == {"chat_id": "777", "text": TelegramText.BAD_LINK}
     assert listed["helpers"][0]["linked"] is False
@@ -147,12 +138,11 @@ def test_a_wrong_link_links_nobody(linked_server, telegram):
 
 def test_the_alert_reaches_the_helper_on_telegram_with_a_map_pin(linked_server, telegram):
     url = linked_server()
-    http(f"{base(url)}/profile", "PUT", {"user_id": "u1", "name": "Ahmed"})
-    _, helper = http(f"{base(url)}/helpers", "POST", {"user_id": "u1", "name": "Sara"})
+    _, helper = add_helper(url, sign_up(url, "ahmed", "Ahmed"))
     open_link(telegram, helper)
-    call(url, "understand_speech", user_id="u1", heard="I fell")
+    call(url, "understand_speech", user_id="ahmed", heard="I fell")
 
-    result = call(url, "emergency_sos", user_id="u1", **CAIRO)
+    result = call(url, "emergency_sos", user_id="ahmed", **CAIRO)
     alert = [m for m in telegram.sent("sendMessage") if m["text"].startswith("🚨")]
 
     assert result["sent_to"] == ["Sara"]
@@ -163,68 +153,69 @@ def test_the_alert_reaches_the_helper_on_telegram_with_a_map_pin(linked_server, 
 
 def test_a_missing_map_pin_still_counts_as_sent(linked_server, telegram):
     url = linked_server()
-    _, helper = http(f"{base(url)}/helpers", "POST", {"user_id": "u1", "name": "Sara"})
+    _, helper = add_helper(url, sign_up(url))
     open_link(telegram, helper)
     telegram.failing.add("sendLocation")
-    call(url, "understand_speech", user_id="u1", heard="I fell")
+    call(url, "understand_speech", user_id="ahmed", heard="I fell")
 
-    assert call(url, "emergency_sos", user_id="u1", **CAIRO)["sent_to"] == ["Sara"]
+    assert call(url, "emergency_sos", user_id="ahmed", **CAIRO)["sent_to"] == ["Sara"]
 
 
 def test_when_telegram_refuses_the_alert_alexa_says_so(linked_server, telegram):
     url = linked_server()
-    _, helper = http(f"{base(url)}/helpers", "POST", {"user_id": "u1", "name": "Sara"})
+    _, helper = add_helper(url, sign_up(url))
     open_link(telegram, helper)
     telegram.failing.add("sendMessage")
-    call(url, "understand_speech", user_id="u1", heard="I fell")
+    call(url, "understand_speech", user_id="ahmed", heard="I fell")
 
-    assert call(url, "emergency_sos", user_id="u1", **CAIRO)["say"] == Reply.SOS_FAILED
+    assert call(url, "emergency_sos", user_id="ahmed", **CAIRO)["say"] == Reply.SOS_FAILED
 
 
 def test_without_a_bot_token_helpers_get_no_link(server):
-    url = base(server())
+    url = server()
+    token = sign_up(url)
 
-    _, helper = http(f"{url}/helpers", "POST", {"user_id": "u1", "name": "Sara"})
-    _, listed = http(f"{url}/helpers?user_id=u1")
+    _, helper = add_helper(url, token)
+    _, listed = http(f"{base_url(url)}/helpers", token=token)
 
     assert helper["link"] is None
     assert listed["telegram"] is False
 
 
 def test_the_profile_is_saved_and_read_back(server):
-    url = base(server())
+    url = server()
+    token = sign_up(url)
 
-    saved = http(f"{url}/profile", "PUT", {"user_id": "u1", "name": " Ahmed ", "home_address": "12 Tahrir St"})
-    read = http(f"{url}/profile?user_id=u1")
+    saved = http(f"{base_url(url)}/profile", "PUT", {"name": " Ahmed ", "home_address": "12 Tahrir St"}, token)
+    read = http(f"{base_url(url)}/profile", token=token)
 
     assert saved == (200, {"name": "Ahmed", "home_address": "12 Tahrir St"})
     assert read == (200, {"name": "Ahmed", "home_address": "12 Tahrir St"})
 
 
-@pytest.mark.parametrize(
-    ("method", "path", "body", "error"),
-    [
-        ("PUT", "/profile", {"user_id": "u1", "name": ""}, ErrorMessage.NAME_MISSING),
-        ("POST", "/helpers", {"user_id": "", "name": "Sara"}, ErrorMessage.USER_ID_MISSING),
-        ("GET", "/helpers", None, ErrorMessage.USER_ID_MISSING),
-        ("GET", "/profile", None, ErrorMessage.USER_ID_MISSING),
-    ],
-)
-def test_missing_fields_are_refused(server, method, path, body, error):
-    assert http(f"{base(server())}{path}", method, body) == (400, {"error": error})
+@pytest.mark.parametrize(("method", "path"), [("PUT", "/profile"), ("POST", "/helpers")])
+def test_a_missing_name_is_refused(server, method, path):
+    url = server()
+
+    assert http(f"{base_url(url)}{path}", method, {"name": ""}, sign_up(url)) == (
+        400,
+        {"error": ErrorMessage.NAME_MISSING},
+    )
 
 
 def test_a_helper_can_only_be_removed_by_their_own_person(server):
-    url = base(server())
-    _, helper = http(f"{url}/helpers", "POST", {"user_id": "u1", "name": "Sara"})
+    url = server()
+    ahmed, sara = sign_up(url, "ahmed"), sign_up(url, "sara")
+    _, helper = add_helper(url, ahmed, "Omar")
+    remove = f"{base_url(url)}/helpers/{helper['id']}"
 
-    assert http(f"{url}/helpers/{helper['id']}?user_id=u2", "DELETE") == (404, {"error": ErrorMessage.HELPER_NOT_FOUND})
-    assert http(f"{url}/helpers/{helper['id']}?user_id=u1", "DELETE")[0] == 204
-    assert http(f"{url}/helpers?user_id=u1")[1]["helpers"] == []
+    assert http(remove, "DELETE", token=sara) == (404, {"error": ErrorMessage.HELPER_NOT_FOUND})
+    assert http(remove, "DELETE", token=ahmed)[0] == 204
+    assert http(f"{base_url(url)}/helpers", token=ahmed)[1]["helpers"] == []
 
 
 def test_the_page_may_save_the_profile_from_another_port(server):
-    request = Request(f"{base(server())}/profile", method="OPTIONS")
+    request = Request(f"{base_url(server())}/profile", method="OPTIONS")
     request.add_header("Origin", "http://localhost:5180")
     request.add_header("Access-Control-Request-Method", "PUT")
 

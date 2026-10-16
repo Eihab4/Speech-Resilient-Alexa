@@ -80,3 +80,17 @@ CREATE TABLE IF NOT EXISTS alerts (
     status TEXT NOT NULL,
     created_at TEXT NOT NULL
 );
+
+-- Signing in on the page. The username is the person's user_id everywhere else (users.external_id).
+CREATE TABLE IF NOT EXISTS accounts (
+    user_id INTEGER PRIMARY KEY REFERENCES users(id),
+    password_hash TEXT NOT NULL,
+    created_at TEXT NOT NULL
+);
+
+-- One row per signed-in browser. Only a hash of the token is kept, so the file alone can't sign anyone in.
+CREATE TABLE IF NOT EXISTS sessions (
+    token_hash TEXT PRIMARY KEY,
+    user_id INTEGER NOT NULL REFERENCES users(id),
+    created_at TEXT NOT NULL
+);

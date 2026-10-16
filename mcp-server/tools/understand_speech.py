@@ -38,6 +38,9 @@ def understand(
 
     awaiting_yes = bool(earlier) and earlier[-1].next_move == NextMove.CONFIRM
     set_aside = _set_aside_piece(last) if earlier else None
+    # The brain may call the person by name; it comes from the name they signed in with.
+    profile = store.profile(company_id, user_id)
+    person = profile.name if profile else ""
     said_yes = fragment.lower() in YES_WORDS
     said_no = fragment.lower() in NO_WORDS
     # Switch turns belong to no request, so they never reach the brain as pieces of one.
@@ -45,7 +48,7 @@ def understand(
 
     if set_aside and said_yes:
         store.save_request(conversation, request.model_copy(update={"status": RequestStatus.REPLACED}))
-        result = brain.interpret([set_aside], history.for_brain(conversation))
+        result = brain.interpret([set_aside], history.for_brain(conversation), person)
         request = Request(intent=result.intent, details=result.details)
         turn_request_id, fragment = request.id, set_aside
     elif set_aside and said_no:
@@ -66,7 +69,8 @@ def understand(
             intent=request.intent, details=request.details, next_move=NextMove.ASK, say=Reply.WHAT_TO_CHANGE
         )
     else:
-        result = brain.interpret([turn.heard for turn in earlier] + [fragment], history.for_brain(conversation))
+        pieces = [turn.heard for turn in earlier] + [fragment]
+        result = brain.interpret(pieces, history.for_brain(conversation), person)
         if result.new_request and request.intent:
             result = BrainResult(
                 intent=request.intent,

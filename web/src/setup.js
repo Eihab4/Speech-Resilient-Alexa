@@ -1,12 +1,12 @@
 import { HELPERS_REFRESH_MS } from "./config.js";
-import { PeopleLabel } from "./messages.js";
+import { PeopleLabel, invitation } from "./messages.js";
 import { addHelper, listHelpers, loadProfile, removeHelper, saveProfile } from "./people.js";
 import { readPosition } from "./position.js";
 
 // "People who help me": done once by the family, not by voice.
-export function setupPeople(section, getUserId) {
+export function setupPeople(section, getSession) {
+  const token = () => getSession()?.token ?? "";
   const profileForm = section.querySelector("#profile-form");
-  const nameInput = section.querySelector("#profile-name");
   const addressInput = section.querySelector("#profile-address");
   const helperForm = section.querySelector("#helper-form");
   const helperName = section.querySelector("#helper-name");
@@ -14,6 +14,7 @@ export function setupPeople(section, getUserId) {
   const status = section.querySelector("#people-status");
   const locationButton = section.querySelector("#allow-location");
   let refresh = null;
+  let shown = "";
 
   const show = (message) => (status.textContent = message);
 
@@ -44,13 +45,20 @@ export function setupPeople(section, getUserId) {
       link.target = "_blank";
       link.rel = "noreferrer";
       link.textContent = helper.link;
+      const text = invitation(helper.name, getSession().name, helper.link);
       const copy = button(PeopleLabel.COPY, async () => {
-        await navigator.clipboard.writeText(helper.link);
-        copy.textContent = PeopleLabel.COPIED;
+        try {
+          await navigator.clipboard.writeText(text);
+          copy.textContent = PeopleLabel.COPIED;
+        } catch {
+          show(PeopleLabel.COPY_FAILED);
+        }
       });
       item.append(hint, link, copy);
+      // Phones can hand the invitation straight to WhatsApp or Messages.
+      if (navigator.share) item.append(button(PeopleLabel.SHARE, () => navigator.share({ text }).catch(() => {})));
     }
-    item.append(button(PeopleLabel.REMOVE, () => run(() => removeHelper(getUserId(), helper.id).then(refreshHelpers))));
+    item.append(button(PeopleLabel.REMOVE, () => run(() => removeHelper(token(), helper.id).then(refreshHelpers))));
     return item;
   }
 
@@ -64,20 +72,22 @@ export function setupPeople(section, getUserId) {
 
   async function refreshHelpers() {
     clearTimeout(refresh);
-    const userId = getUserId();
-    if (!userId || !section.open) return;
-    const { telegram, helpers } = await listHelpers(userId);
-    list.replaceChildren(...helpers.map(helperItem));
+    if (!token() || !section.open) return;
+    const { telegram, helpers } = await listHelpers(token());
+    // Redrawn only when something changed, so a button isn't swapped out from under a click.
+    const current = JSON.stringify(helpers);
+    if (current !== shown) {
+      list.replaceChildren(...helpers.map(helperItem));
+      shown = current;
+    }
     show(telegram ? "" : PeopleLabel.NO_TELEGRAM);
     // Keep checking while someone hasn't opened their link, so "linked" shows up on its own.
     if (helpers.some((helper) => !helper.linked)) refresh = setTimeout(() => run(refreshHelpers), HELPERS_REFRESH_MS);
   }
 
   async function loadAll() {
-    const userId = getUserId();
-    if (!userId || !section.open) return;
-    const profile = await loadProfile(userId);
-    nameInput.value = profile.name ?? "";
+    if (!token() || !section.open) return;
+    const profile = await loadProfile(token());
     addressInput.value = profile.home_address ?? "";
     await refreshHelpers();
   }
@@ -87,7 +97,7 @@ export function setupPeople(section, getUserId) {
   profileForm.addEventListener("submit", (event) => {
     event.preventDefault();
     run(async () => {
-      await saveProfile(getUserId(), nameInput.value.trim(), addressInput.value.trim());
+      await saveProfile(token(), getSession().name, addressInput.value.trim());
       show(PeopleLabel.SAVED);
     });
   });
@@ -95,7 +105,7 @@ export function setupPeople(section, getUserId) {
   helperForm.addEventListener("submit", (event) => {
     event.preventDefault();
     run(async () => {
-      await addHelper(getUserId(), helperName.value.trim());
+      await addHelper(token(), helperName.value.trim());
       helperName.value = "";
       await refreshHelpers();
     });
@@ -106,5 +116,14 @@ export function setupPeople(section, getUserId) {
     show((await readPosition()) ? PeopleLabel.LOCATION_ON : PeopleLabel.LOCATION_OFF);
   });
 
-  return { reload: () => run(loadAll) };
+  return {
+    reload: () => run(loadAll),
+    close() {
+      section.open = false;
+      list.replaceChildren();
+      shown = "";
+      addressInput.value = "";
+      show("");
+    },
+  };
 }

@@ -116,7 +116,7 @@ npm install
 npm run dev
 ```
 
-Open the URL Vite prints (`http://localhost:5180` by default; set `WEB_PORT` in `web/.env` to change it) and send `tomorrow`, `doctor ten`, `yes`. The page has no AI of its own, so it makes the follow-up call Alexa would make: `do_confirmed_request` after a `done`, `cancel_request` after a `cancel`.
+Open the URL Vite prints (`http://localhost:5180` by default; set `WEB_PORT` in `web/.env` to change it) create an account (a username, the name Alexa calls you by, and a password), and send `tomorrow`, `doctor ten`, `yes`. The browser stays signed in until you sign out, so the family can sign in once for the person. The username is the person's `user_id` in the MCP tools; a real Alexa+ host knows the person from their Amazon account instead. Details: [feature-sign-in.md](docs/branches/feature-sign-in.md). The page has no AI of its own, so it makes the follow-up call Alexa would make: `do_confirmed_request` after a `done`, `cancel_request` after a `cancel`.
 
 To talk instead of type, press **Speak**. Every pause sends what was said as its own turn, so slow, broken-up speech reaches the server in pieces, the way Alexa would pass it on.
 
@@ -124,7 +124,7 @@ The microphone streams to the server's `/transcribe` WebSocket, which passes it 
 
 Alexa reads every reply aloud. The text goes to the server's `/speak` route, which returns **Amazon Polly** audio (`POLLY_VOICE_ID`, `POLLY_ENGINE`); without AWS credentials the page uses the browser's own voice instead, so there is nothing to set up. The microphone pauses while she talks and comes back when she finishes. **Mute Alexa** turns the voice off; pressing it mid-reply cuts her off at once.
 
-Say "I fell", "help help" or "emergency" and a red countdown starts. Say "stop" to cancel it; stay silent and the alert goes to the person's helpers on Telegram, with the address from **Amazon Location** and a map pin. To set it up, open **People who help me** at the bottom of the page: save the person's name, add a helper, and have the helper open their link and press Start. This needs `TELEGRAM_BOT_TOKEN` (a bot from Telegram's BotFather) and AWS credentials with `geo-places:ReverseGeocode`; without the token, alerts are written to the server log. Details: [feature-emergency-sos.md](docs/branches/feature-emergency-sos.md).
+Say "I fell", "help help" or "emergency" and a red countdown starts. Say "stop" to cancel it; stay silent and the alert goes to the person's helpers on Telegram, with the address from **Amazon Location** and a map pin. To set it up, open **People who help me** at the bottom of the page: add a helper, and have the helper open their link and press Start. The alert carries the name on the person's account. This needs `TELEGRAM_BOT_TOKEN` (a bot from Telegram's BotFather) and AWS credentials with `geo-places:ReverseGeocode`; without the token, alerts are written to the server log. Details: [feature-emergency-sos.md](docs/branches/feature-emergency-sos.md).
 
 The server accepts browser calls from any `localhost` port. To allow another page, add its URL to `MCP_CORS_ORIGINS`.
 
@@ -186,7 +186,7 @@ mcp-server/
   actions/      simulated reminder, message and call
   notify/       the one way messages leave the server: Telegram, or the log
   location/     Amazon Location, an address for emergency alerts
-  people/       the family's setup routes: the person's profile and their helpers
+  people/       the page's account (sign up, sign in) and setup routes: the profile and the helpers
   tools/        one file per MCP tool
   utils/        ids and time
 data/           recorded answers for mock mode

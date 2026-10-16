@@ -86,15 +86,16 @@ flowchart TD
   - `/start` with no code or a wrong one: the bot says the link doesn't work.
   - A used link can't be taken by another chat; the same helper opening it again is fine.
 - [x] **14. Routes, `people/routes.py`:** plain HTTP routes next to `/speak`, not MCP tools (see Decisions):
-  - `GET /profile?user_id=` and `PUT /profile`: the person's name and home address.
+  - `GET /profile` and `PUT /profile`: the person's name and home address.
   - `POST /helpers`: a helper's name. Returns the link `https://t.me/<bot>?start=<link_code>`.
-  - `GET /helpers?user_id=`: the helpers, whether each one is linked, and whether Telegram is set up.
-  - `DELETE /helpers/{id}?user_id=`: remove a helper, only one of this person's.
+  - `GET /helpers`: the helpers, whether each one is linked, and whether Telegram is set up.
+  - `DELETE /helpers/{id}`: remove a helper, only one of this person's.
+  - Since [feature/sign-in](feature-sign-in.md), every one of them needs a signed-in account, and the person comes from the session, not from the request.
   - CORS now allows `PUT` for the page.
 - [x] **15. Settings:** `TELEGRAM_BOT_TOKEN`, `TELEGRAM_API_URL`, `TELEGRAM_POLL_SECONDS`, `TELEGRAM_TIMEOUT_SECONDS` in `config/settings.py` and `.env.example`. The bot's username comes from `getMe` the first time a link is needed.
 - [x] **16. Page, helper setup:** a **People who help me** part at the bottom of `web/index.html`, in `web/src/setup.js` and `web/src/people.js`:
-  - the person's name and home address.
-  - add a helper by name, and show their link with a copy button.
+  - the home address. The name in the alert is the name on the person's account.
+  - add a helper by name, and show their link. **Copy invitation** copies a ready message for the helper (who added them, open the link, press Start); on a phone, **Share invitation** sends it straight to WhatsApp or Messages.
   - the list of helpers, showing "waiting" until they press Start, then "linked" (checked every 3 seconds while someone is waiting).
   - **Allow location for emergencies** asks for the browser's permission here, so the prompt never pops up during an emergency.
   - Not done: a QR code for the link. It needs a QR package in `web/`.
@@ -137,7 +138,7 @@ flowchart TD
 - **The brain as a second line?** Phrases not in the list ("I'm on the floor", "I can't get up") are missed. The brain could flag an emergency and start the same countdown. Not decided. Today the brain's schema already lists `sos` among the moves (every `NextMove` is in it), but its prompt never mentions it.
 - **Medical info in the alert?** Illnesses and medicines would help whoever arrives. Not decided.
 - **If the page closes during the countdown,** nothing is sent.
-- **No sign-in on the setup routes.** Any page on an allowed origin can add a helper for any `user_id`. Fine for the demo, not for real use.
+- ~~**No sign-in on the setup routes.**~~ Done on [feature/sign-in](feature-sign-in.md): the setup routes need a signed-in account.
 - **Calm replies after the alert.** The next turns go through the normal flow.
 
 ## Tests
