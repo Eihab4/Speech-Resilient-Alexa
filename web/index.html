@@ -11,11 +11,60 @@
       <h1>Say it your way.</h1>
       <p class="intro">Send a fragment. Alexa keeps the context, instead of making you start over.</p>
 
+      <section id="account" class="account" hidden>
+        <form id="sign-in-form">
+          <h2>Sign in</h2>
+          <label>
+            Username
+            <input id="sign-in-username" required autocomplete="username" autocapitalize="none" spellcheck="false" />
+          </label>
+          <label>
+            Password
+            <input id="sign-in-password" type="password" required autocomplete="current-password" />
+          </label>
+          <button type="submit">Sign in</button>
+          <p class="hint">New here? <button type="button" id="show-sign-up" class="link">Create an account</button></p>
+        </form>
+
+        <form id="sign-up-form" hidden>
+          <h2>Create an account</h2>
+          <label>
+            Username
+            <input
+              id="sign-up-username"
+              required
+              autocomplete="username"
+              autocapitalize="none"
+              spellcheck="false"
+              placeholder="rana_h"
+              pattern="[A-Za-z0-9._\-]{3,30}"
+            />
+            <small>3 to 30 letters, digits, dots, dashes or underscores.</small>
+          </label>
+          <label>
+            Your name
+            <input id="sign-up-name" required autocomplete="given-name" placeholder="Rana" />
+            <small>Alexa calls you by it, and it's in your emergency alerts.</small>
+          </label>
+          <label>
+            Password
+            <input id="sign-up-password" type="password" required minlength="6" autocomplete="new-password" />
+            <small>At least 6 characters. This browser keeps you signed in.</small>
+          </label>
+          <button type="submit">Create account</button>
+          <p class="hint">Have an account? <button type="button" id="show-sign-in" class="link">Sign in</button></p>
+        </form>
+
+        <p id="account-error" class="hint error" role="alert"></p>
+      </section>
+
+      <div id="signed-in" hidden>
+      <p class="person">
+        <span id="person-name"></span>
+        <button type="button" id="sign-out" class="link">Sign out</button>
+      </p>
+
       <form id="turn-form">
-        <label>
-          User ID
-          <input id="user-id" value="demo-user" required />
-        </label>
         <label>
           What did you say?
           <input id="heard" placeholder="Tomorrow… doctor… ten" required autocomplete="off" />
@@ -40,10 +89,6 @@
 
         <form id="profile-form">
           <label>
-            Name in the alert
-            <input id="profile-name" required autocomplete="off" placeholder="Ahmed" />
-          </label>
-          <label>
             Home address
             <input id="profile-address" autocomplete="off" placeholder="Sent when the device gives no location" />
           </label>
@@ -65,6 +110,7 @@
         </div>
         <p id="people-status" class="hint" aria-live="polite"></p>
       </details>
+      </div>
     </main>
     <script type="module" src="/src/main.js"></script>
   </body>
