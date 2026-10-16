@@ -13,6 +13,7 @@ class Turn(BaseModel):
     say: str
     next_move: NextMove
     created_at: str = Field(default_factory=utc_now)
+    request_status: RequestStatus | None = None  # filled only when read from the history
 
 
 class Request(BaseModel):

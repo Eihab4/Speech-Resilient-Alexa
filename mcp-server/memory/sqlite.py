@@ -68,12 +68,20 @@ class SqliteMemoryStore:
         )
         return [Turn(**row) for row in rows]
 
+    def last_turn(self, conversation_id: int) -> Turn | None:
+        row = self._db.execute(
+            "SELECT seq, request_id, heard, say, next_move, created_at FROM turns "
+            "WHERE conversation_id = ? ORDER BY seq DESC LIMIT 1",
+            (conversation_id,),
+        ).fetchone()
+        return Turn(**row) if row else None
+
     def finished_turns(self, conversation_id: int, after_seq: int) -> list[Turn]:
         rows = self._db.execute(
-            "SELECT t.seq, t.request_id, t.heard, t.say, t.next_move, t.created_at FROM turns t "
-            "JOIN requests r ON r.id = t.request_id "
-            "WHERE t.conversation_id = ? AND t.seq > ? AND r.status IN (?, ?) ORDER BY t.seq",
-            (conversation_id, after_seq, RequestStatus.DONE, RequestStatus.CANCELLED),
+            "SELECT t.seq, t.request_id, t.heard, t.say, t.next_move, t.created_at, r.status AS request_status "
+            "FROM turns t JOIN requests r ON r.id = t.request_id "
+            "WHERE t.conversation_id = ? AND t.seq > ? AND r.status IN (?, ?, ?) ORDER BY t.seq",
+            (conversation_id, after_seq, RequestStatus.DONE, RequestStatus.CANCELLED, RequestStatus.REPLACED),
         )
         return [Turn(**row) for row in rows]
 

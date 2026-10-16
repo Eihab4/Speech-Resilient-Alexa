@@ -6,7 +6,7 @@ from brain.factory import create_client
 from brain.interpreter import LlmBrain
 from brain.summarizer import LlmSummarizer, MockSummarizer
 from config import get_settings
-from enums import NextMove
+from enums import NextMove, RequestStatus
 from memory import History, Request, SqliteMemoryStore, Turn
 from support import needs_real_llm, with_client
 
@@ -46,8 +46,8 @@ def wait_for_summary(store, conversation, timeout=5):
     raise TimeoutError("no summary was written")
 
 
-def finished_request(store, conversation, lines):
-    request = Request(intent="call", status="done")
+def finished_request(store, conversation, lines, status=RequestStatus.DONE):
+    request = Request(intent="call", status=status)
     store.save_request(conversation, request)
     for heard, say in lines:
         store.add_turn(conversation, Turn(request_id=request.id, heard=heard, say=say, next_move=NextMove.CONFIRM))
@@ -62,6 +62,23 @@ def test_a_short_conversation_shows_the_brain_the_full_history(store):
 
     assert history.for_brain(conversation) == "person: call mom\nalexa: Call Mom?\nperson: yes\nalexa: Okay."
     assert store.summary(conversation).text == ""
+
+
+@pytest.mark.parametrize(
+    ("status", "note"),
+    [
+        (RequestStatus.CANCELLED, "(this request was cancelled)"),
+        (RequestStatus.REPLACED, "(this request was left unfinished: the person moved to another request)"),
+    ],
+)
+def test_the_history_says_how_an_unfinished_request_ended(store, status, note):
+    conversation = store.start_conversation("acme", "u1")
+    finished_request(store, conversation, [("tomorrow doctor", "What time?")], status)
+    finished_request(store, conversation, [("call mom", "Call Mom?"), ("yes", "Okay.")])
+
+    assert History(store, MockSummarizer(50), 10, 400).for_brain(conversation) == (
+        f"person: tomorrow doctor\nalexa: What time?\n{note}\nperson: call mom\nalexa: Call Mom?\nperson: yes\nalexa: Okay."
+    )
 
 
 def test_the_request_in_progress_is_never_part_of_the_history(store):

@@ -31,3 +31,13 @@ def test_llm_schema_offers_exactly_the_known_moves():
     schema = BrainResult.model_json_schema()
 
     assert schema["$defs"]["NextMove"]["enum"] == [move.value for move in NextMove]
+
+
+def test_a_brain_result_continues_the_open_request_unless_told_otherwise():
+    assert BrainResult(next_move=NextMove.LISTEN, say="Mm-hm").new_request is False
+
+
+def test_llm_schema_lets_the_brain_flag_a_new_request():
+    schema = BrainResult.model_json_schema()
+
+    assert schema["properties"]["new_request"]["type"] == "boolean"

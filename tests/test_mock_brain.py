@@ -43,7 +43,12 @@ def test_recordings_are_valid_results_and_cover_the_demo_scenarios():
     recorded = MockAnswers.model_validate_json(Settings().mock.answers_path.read_text())
 
     assert all(isinstance(answer, BrainResult) for answer in recorded.answers.values())
-    assert {"tomorrow doctor ten", "call sara no mom", "message ahmed running late"} <= recorded.answers.keys()
+    assert {
+        "tomorrow doctor ten",
+        "tomorrow doctor ten call mom",
+        "call sara no mom",
+        "message ahmed running late",
+    } <= recorded.answers.keys()
 
 
 def test_recordings_match_input_case_and_spacing(server, tmp_path):

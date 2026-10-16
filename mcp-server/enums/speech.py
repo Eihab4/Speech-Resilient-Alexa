@@ -7,6 +7,7 @@ class NextMove(StrEnum):
     CONFIRM = "confirm"
     CANCEL = "cancel"
     DONE = "done"
+    SWITCH = "switch"  # asked whether to drop the open request for a new one
 
 
 class Intent(StrEnum):
@@ -20,6 +21,7 @@ class RequestStatus(StrEnum):
     CONFIRMED = "confirmed"
     DONE = "done"
     CANCELLED = "cancelled"
+    REPLACED = "replaced"  # left unfinished because the person moved to another request
 
 
 class TranscriptType(StrEnum):
