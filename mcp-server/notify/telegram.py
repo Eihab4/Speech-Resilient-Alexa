@@ -7,7 +7,7 @@ from urllib.request import Request, urlopen
 
 from config.settings import TelegramSettings
 from memory import Helper, MemoryStore
-from messages import ErrorMessage, TelegramText
+from messages import ErrorMessage, LogMessage, TelegramText
 from notify.base import Position
 
 logger = logging.getLogger(__name__)
@@ -80,7 +80,7 @@ class TelegramNotifier:
         try:
             self._bot.send_location(helper.telegram_chat_id, position)
         except TelegramError:
-            logger.exception(ErrorMessage.TELEGRAM_PIN_FAILED.format(helper=helper.name))
+            logger.exception(LogMessage.TELEGRAM_PIN_FAILED.format(helper=helper.name))
 
 
 class HelperLinker:
@@ -106,7 +106,7 @@ class HelperLinker:
             try:
                 updates = self._bot.updates(offset)
             except TelegramError:
-                logger.exception(ErrorMessage.TELEGRAM_UPDATES_FAILED)
+                logger.exception(LogMessage.TELEGRAM_UPDATES_FAILED)
                 stop.wait(RETRY_SECONDS)
                 continue
             for update in updates:
@@ -114,4 +114,4 @@ class HelperLinker:
                 try:
                     self.handle(update)
                 except Exception:
-                    logger.exception(ErrorMessage.TELEGRAM_UPDATE_FAILED)
+                    logger.exception(LogMessage.TELEGRAM_UPDATE_FAILED)

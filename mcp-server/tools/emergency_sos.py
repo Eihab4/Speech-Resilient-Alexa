@@ -6,7 +6,7 @@ from config.settings import SosSettings
 from enums import AlertStatus, NextMove
 from location import Geocoder
 from memory import Alert, Helper, MemoryStore, Profile, Turn
-from messages import MAP_URL, SOS_PHRASES, STOP_WORDS, AlertText, ErrorMessage, Reply
+from messages import MAP_URL, SOS_PHRASES, STOP_WORDS, AlertText, LogMessage, Reply
 from notify import Notifier, Position
 from utils import hours_ago
 
@@ -92,7 +92,7 @@ def _deliver(notifier: Notifier, helper: Helper, text: str, position: Position |
     try:
         notifier.notify(helper, text, position)
     except Exception:
-        logger.exception(ErrorMessage.ALERT_NOT_DELIVERED.format(helper=helper.name))
+        logger.exception(LogMessage.ALERT_NOT_DELIVERED.format(helper=helper.name))
         return False
     return True
 

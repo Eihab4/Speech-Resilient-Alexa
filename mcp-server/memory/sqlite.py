@@ -1,7 +1,9 @@
 import json
 import sqlite3
 from contextlib import contextmanager
+from functools import wraps
 from pathlib import Path
+from threading import RLock
 
 from enums import AlertStatus, RequestStatus
 from memory.models import Action, Alert, Helper, Profile, Request, Summary, Turn
@@ -13,9 +15,30 @@ ALERT_COLUMNS = "a.id, a.heard, a.latitude, a.longitude, a.address, a.text, a.st
 OF_USER = "JOIN users u ON u.id = {table}.user_id WHERE u.company_id = ? AND u.external_id = ?"
 
 
+def _one_call_at_a_time(cls):
+    """Runs every public method under the store's lock. The MCP tools (in a thread pool), the history
+    tidy-up and the Telegram bot share one connection, and SQLite must not see two of them at once."""
+
+    def locked(method):
+        @wraps(method)
+        def call(self, *args, **kwargs):
+            with self._lock:
+                return method(self, *args, **kwargs)
+
+        return call
+
+    for name, member in list(vars(cls).items()):
+        if callable(member) and not name.startswith("_"):
+            setattr(cls, name, locked(member))
+    return cls
+
+
+@_one_call_at_a_time
 class SqliteMemoryStore:
     def __init__(self, db_path: Path, unfinished_ttl_hours: float = 24) -> None:
         self._ttl_hours = unfinished_ttl_hours
+        # Re-entrant, because some methods call others.
+        self._lock = RLock()
         db_path.parent.mkdir(parents=True, exist_ok=True)
         self._db = sqlite3.connect(db_path, autocommit=True, check_same_thread=False)
         self._db.row_factory = sqlite3.Row

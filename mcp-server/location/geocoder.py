@@ -7,7 +7,7 @@ from botocore.exceptions import BotoCoreError, ClientError
 
 from config import Settings
 from config.settings import LocationSettings
-from messages import ErrorMessage
+from messages import LogMessage
 from notify import Position
 
 logger = logging.getLogger(__name__)
@@ -42,7 +42,7 @@ class AmazonLocationGeocoder:
                 Language=self._settings.language,
             )
         except (BotoCoreError, ClientError):
-            logger.exception(ErrorMessage.LOCATION_UNAVAILABLE)
+            logger.exception(LogMessage.LOCATION_UNAVAILABLE)
             return None
         items = response.get("ResultItems") or []
         return items[0].get("Address", {}).get("Label") if items else None

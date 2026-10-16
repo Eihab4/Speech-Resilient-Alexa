@@ -1,5 +1,6 @@
 from messages.alerts import MAP_URL, TELEGRAM_LINK, AlertText, TelegramText
 from messages.errors import ErrorMessage
+from messages.logs import LogMessage
 from messages.prompts import REQUEST_ENDINGS, Prompt
 from messages.replies import ACTION_RESULTS, GENERIC_ACTION_RESULT, Reply
 from messages.tools import ToolDescription
@@ -17,6 +18,7 @@ __all__ = [
     "YES_WORDS",
     "AlertText",
     "ErrorMessage",
+    "LogMessage",
     "Prompt",
     "Reply",
     "TelegramText",

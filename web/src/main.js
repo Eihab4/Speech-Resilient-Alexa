@@ -1,37 +1,19 @@
 import "./styles.css";
 import { Speaker } from "./enums.js";
 import { sendSos, takeTurn } from "./mcp.js";
-import {
-  Greeting,
-  MicLabel,
-  MuteLabel,
-  Note,
-  PersonLabel,
-  SosLabel,
-  SpeakerName,
-  VoiceHint,
-  voiceError,
-} from "./messages.js";
+import { Greeting, MicLabel, MuteLabel, Note, SosLabel, SpeakerName, VoiceHint, voiceError } from "./messages.js";
 import { pauseWhileSpeaking } from "./pause.js";
 import { createOutput } from "./output.js";
-import { signIn, signOut, signUp, whoAmI } from "./account.js";
-import { forgetSession, loadSession, saveSession } from "./session.js";
 import { createPollyVoice } from "./polly.js";
 import { readPosition } from "./position.js";
 import { setupPeople } from "./setup.js";
+import { setupSignIn } from "./signin.js";
 import { createSos } from "./sos.js";
 import { createBrowserVoice, isBrowserVoiceSupported } from "./speak.js";
 import { createTranscribeListener, isMicSupported } from "./transcribe.js";
 import { createListener, isVoiceSupported } from "./voice.js";
 
 const form = document.querySelector("#turn-form");
-const account = document.querySelector("#account");
-const signInForm = document.querySelector("#sign-in-form");
-const signUpForm = document.querySelector("#sign-up-form");
-const accountError = document.querySelector("#account-error");
-const signedIn = document.querySelector("#signed-in");
-const personName = document.querySelector("#person-name");
-const signOutButton = document.querySelector("#sign-out");
 const heard = document.querySelector("#heard");
 const sendButton = document.querySelector("#send");
 const micButton = document.querySelector("#mic");
@@ -41,9 +23,9 @@ const conversation = document.querySelector("#conversation");
 const sosCountdown = document.querySelector("#sos-countdown");
 const emptyConversation = conversation.innerHTML;
 let listener = null;
-let session = loadSession();
+let signedIn = null;
 // The username is the person's user_id in the MCP tools, as the Amazon account would be on a real Alexa+.
-const currentId = () => session?.username ?? "";
+const currentId = () => signedIn?.session?.username ?? "";
 const sos = createSos({
   readPosition,
   onTick: (seconds) => {
@@ -186,81 +168,19 @@ function setupMute() {
 
 setupVoice();
 setupMute();
-const people = setupPeople(document.querySelector("#people"), () => session);
+const people = setupPeople(document.querySelector("#people"), () => signedIn?.session);
 
-function showAccount() {
-  account.hidden = Boolean(session);
-  signedIn.hidden = !session;
-  personName.textContent = session ? PersonLabel.hello(session.name) : "";
-}
-
-function showForm(form) {
-  signInForm.hidden = form !== signInForm;
-  signUpForm.hidden = form !== signUpForm;
-  accountError.textContent = "";
-  form.querySelector("input").focus();
-}
-
-async function enter(start, form) {
-  accountError.textContent = "";
-  try {
-    session = saveSession(await start());
-  } catch (error) {
-    accountError.textContent = error.message;
-    return;
-  }
-  form.reset();
-  showAccount();
-  const hello = Greeting.hello(session.name);
-  addMessage(Speaker.ALEXA, hello);
-  voice.speak(hello);
-  heard.focus();
-}
-
-const field = (form, name) => form.querySelector(`[id$="-${name}"]`).value;
-
-signInForm.addEventListener("submit", (event) => {
-  event.preventDefault();
-  enter(() => signIn(field(signInForm, "username").trim(), field(signInForm, "password")), signInForm);
+signedIn = setupSignIn({
+  onSignedIn(session) {
+    const hello = Greeting.hello(session.name);
+    addMessage(Speaker.ALEXA, hello);
+    voice.speak(hello);
+    heard.focus();
+  },
+  onSignedOut() {
+    if (listener?.listening) listener.stop();
+    sos.follow({});
+    conversation.innerHTML = emptyConversation;
+    people.close();
+  },
 });
-
-signUpForm.addEventListener("submit", (event) => {
-  event.preventDefault();
-  const username = field(signUpForm, "username").trim();
-  enter(() => signUp(username, field(signUpForm, "name").trim(), field(signUpForm, "password")), signUpForm);
-});
-
-document.querySelector("#show-sign-up").addEventListener("click", () => showForm(signUpForm));
-document.querySelector("#show-sign-in").addEventListener("click", () => showForm(signInForm));
-
-function leave() {
-  if (listener?.listening) listener.stop();
-  sos.follow({});
-  forgetSession();
-  session = null;
-  conversation.innerHTML = emptyConversation;
-  people.close();
-  showAccount();
-  showForm(signInForm);
-}
-
-signOutButton.addEventListener("click", () => {
-  const token = session?.token;
-  leave();
-  if (token) signOut(token).catch(() => {});
-});
-
-// A kept session may have been signed out elsewhere; check it, and keep the name up to date.
-async function checkSession() {
-  if (!session) return;
-  try {
-    const me = await whoAmI(session.token);
-    session = saveSession({ ...session, name: me.name });
-    showAccount();
-  } catch (error) {
-    if (error.status === 401) leave();
-  }
-}
-
-showAccount();
-checkSession();

@@ -14,7 +14,7 @@ An Alexa+ add-on for people whose speech is slow, comes out in pieces, or needs 
 
 ![Architecture: clients, the MCP server, SQLite memory, AWS services, hosted LLMs and Telegram](docs/architecture.png)
 
-The picture is drawn from [docs/architecture.py](docs/architecture.py) with the official AWS icons; after a change, run it again (it needs Graphviz: `sudo apt install graphviz`):
+A version with the Groq and OpenRouter logos is in [docs/architecture-logos.png](docs/architecture-logos.png). Both pictures are drawn from [docs/architecture.py](docs/architecture.py) with the official AWS icons; after a change, run it again (it needs Graphviz: `sudo apt install graphviz`):
 
 ```bash
 uv run --no-project --with diagrams python docs/architecture.py
