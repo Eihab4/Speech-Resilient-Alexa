@@ -1,29 +1,36 @@
-"""Draws docs/architecture.png with the official AWS icons.
+"""Draws docs/architecture.png with the official AWS icons, and docs/architecture-logos.png, the same picture
+with the Groq and OpenRouter logos from docs/icons (keep that one out of the demo video: they're trademarks).
 
     uv run --no-project --with diagrams python docs/architecture.py
 
 Needs Graphviz: sudo apt install graphviz
 """
 
+import sys
 from pathlib import Path
 
 from diagrams import Cluster, Diagram, Edge
-from diagrams.aws.business import AlexaForBusiness
-from diagrams.aws.general import General
-from diagrams.aws.ml import Bedrock, Polly, Transcribe
-from diagrams.aws.security import IAM
-from diagrams.generic.compute import Rack
-from diagrams.generic.database import SQL
-from diagrams.generic.device import Mobile
-from diagrams.onprem.client import Client, User
-from diagrams.onprem.network import Internet
-from diagrams.programming.flowchart import Decision
-from diagrams.programming.language import Python
-from diagrams.saas.chat import Telegram
 
-OUTPUT = Path(__file__).with_name("architecture")
+# One icon family: AWS service icons for AWS, and AWS "General" icons for everything else.
+from diagrams.aws.business import AlexaForBusiness
+from diagrams.aws.general import (
+    Client,
+    Forums,
+    General,
+    GenericDatabase,
+    InternetAlt1,
+    MobileClient,
+    Multimedia,
+    TraditionalServer,
+    User,
+)
+from diagrams.aws.ml import Bedrock, MachineLearning, Polly, Transcribe
+from diagrams.aws.security import IAM
+from diagrams.custom import Custom
+
+ICONS = Path(__file__).with_name("icons")
 # Curved edges keep each label next to its arrow; Graphviz misplaces labels on square ones.
-GRAPH = {"pad": "0.6", "nodesep": "1.0", "ranksep": "1.3", "fontsize": "28", "labelloc": "t", "splines": "spline"}
+GRAPH = {"pad": "0.6", "nodesep": "1.4", "ranksep": "1.6", "fontsize": "28", "labelloc": "t", "splines": "spline"}
 EDGE = {"fontsize": "13", "color": "#5f6670"}
 
 
@@ -32,58 +39,65 @@ def below(label: str) -> str:
     return "\n" + label
 
 
-with Diagram(
-    "Speech-Resilient Alexa",
-    filename=str(OUTPUT),
-    outformat="png",
-    show=False,
-    direction="TB",
-    graph_attr=GRAPH,
-    edge_attr=EDGE,
-):
-    person = User(below("Person with\nbroken speech"))
+def draw(output: Path, logos: bool) -> None:
+    with Diagram(
+        "Speech-Resilient Alexa",
+        filename=str(output),
+        outformat="png",
+        show=False,
+        direction="TB",
+        graph_attr=GRAPH,
+        edge_attr=EDGE,
+    ):
+        person = User(below("Person with\nbroken speech"))
 
-    with Cluster("Clients"):
-        alexa = AlexaForBusiness(below("Alexa+\n(the AI host)"))
-        page = Client(below("Browser page\nweb/"))
+        with Cluster("Clients"):
+            alexa = AlexaForBusiness(below("Alexa+"))
+            page = Client(below("Browser page"))
 
-    with Cluster("MCP server · mcp-server/ · FastMCP over Streamable HTTP"):
-        voice = Rack(below("Voice routes\n/transcribe · /speak"))
-        tools = Python(
-            below(
-                "MCP tools at /mcp\nunderstand_speech · do_confirmed_request\ncancel_request · resume_unfinished\nemergency_sos"
+        with Cluster("MCP server (FastMCP, Streamable HTTP)"):
+            voice = Multimedia(below("Voice routes"))
+            tools = TraditionalServer(below("MCP tools"))
+            brain = MachineLearning(below("Brain"))
+
+        memory = GenericDatabase(below("SQLite memory"))
+
+        with Cluster("AWS Cloud"):
+            transcribe = Transcribe(below("Amazon Transcribe"))
+            polly = Polly(below("Amazon Polly"))
+            bedrock = Bedrock(below("Amazon Bedrock"))
+            location = General(below("Amazon Location"))
+            IAM(below("IAM"))
+
+        with Cluster("Hosted LLMs"):
+            openrouter = (
+                Custom(below("OpenRouter"), str(ICONS / "openrouter.png"))
+                if logos
+                else InternetAlt1(below("OpenRouter"))
             )
-        )
-        brain = Decision(below("Brain\nfixed words first, then the LLM"))
+            groq = Custom(below("Groq"), str(ICONS / "groq.png")) if logos else InternetAlt1(below("Groq"))
 
-    memory = SQL(below("SQLite memory\nturns · requests · summaries\nprofiles · helpers · alerts"))
+        telegram = Forums(below("Telegram bot"))
+        phone = MobileClient(below("Helper's phone"))
 
-    with Cluster("AWS Cloud · us-east-1"):
-        transcribe = Transcribe(below("Amazon Transcribe\nspeech to text"))
-        polly = Polly(below("Amazon Polly\nneural voice"))
-        bedrock = Bedrock(below("Amazon Bedrock\n(optional brain)"))
-        location = General(below("Amazon Location\naddress for alerts"))
-        IAM(below("IAM user\nspeech-resilient-alexa"))
+        person >> alexa
+        person >> page
+        alexa >> Edge(label="tool calls") >> tools
+        page >> Edge(label="tool calls") >> tools
+        page >> Edge(label="audio") >> voice
+        voice >> Edge(label="speech to text") >> transcribe
+        voice >> Edge(label="text to speech") >> polly
+        tools >> brain
+        brain >> bedrock
+        brain >> openrouter
+        brain >> groq
+        tools - memory
+        tools >> Edge(label="address") >> location
+        tools >> Edge(label="SOS alert") >> telegram
+        telegram >> phone
 
-    with Cluster("Hosted LLMs"):
-        openrouter = Internet(below("OpenRouter"))
-        groq = Internet(below("Groq"))
 
-    telegram = Telegram(below("Telegram Bot API"))
-    phone = Mobile(below("Helper's phone"))
-
-    person >> Edge(label="talks") >> alexa
-    person >> Edge(label="speaks · types") >> page
-    alexa >> Edge(label="tool calls") >> tools
-    page >> Edge(label="tool calls") >> tools
-    page >> Edge(label="mic audio · reply text") >> voice
-    voice >> Edge(label="audio → text") >> transcribe
-    voice >> Edge(label="text → voice") >> polly
-    tools >> Edge(label="every piece") >> brain
-    brain >> bedrock
-    brain >> openrouter
-    brain >> groq
-    tools - Edge(label="every turn") - memory
-    tools >> Edge(label="emergency_sos: address") >> location
-    tools >> Edge(label="emergency_sos: notify()") >> telegram
-    telegram >> Edge(label="alert + map pin") >> phone
+if __name__ == "__main__":
+    here = Path(sys.argv[0]).resolve().parent
+    draw(here / "architecture", logos=False)
+    draw(here / "architecture-logos", logos=True)
