@@ -6,6 +6,7 @@ import { pauseWhileSpeaking } from "./pause.js";
 import { createOutput } from "./output.js";
 import { createPollyVoice } from "./polly.js";
 import { readPosition } from "./position.js";
+import { setupPeople } from "./setup.js";
 import { createSos } from "./sos.js";
 import { createBrowserVoice, isBrowserVoiceSupported } from "./speak.js";
 import { createTranscribeListener, isMicSupported } from "./transcribe.js";
@@ -163,3 +164,5 @@ function setupMute() {
 
 setupVoice();
 setupMute();
+const people = setupPeople(document.querySelector("#people"), () => userId.value.trim());
+userId.addEventListener("change", people.reload);

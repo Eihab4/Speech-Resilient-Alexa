@@ -136,3 +136,54 @@ button.secondary[aria-pressed="true"] {
   margin: 0;
   color: #616b79;
 }
+
+.people {
+  margin-top: 40px;
+  border-top: 1px solid #c9ced8;
+  padding-top: 20px;
+}
+
+.people summary {
+  cursor: pointer;
+  font-size: 1.2rem;
+  font-weight: 700;
+}
+
+.people form {
+  margin: 18px 0;
+}
+
+#helpers {
+  display: grid;
+  gap: 12px;
+  margin: 0 0 18px;
+  padding: 0;
+  list-style: none;
+}
+
+.helper {
+  display: grid;
+  gap: 8px;
+  border-radius: 14px;
+  background: white;
+  border: 1px solid #c9ced8;
+  padding: 14px 16px;
+}
+
+.helper a {
+  overflow-wrap: anywhere;
+  color: #6b54d9;
+}
+
+.helper small {
+  color: #616b79;
+}
+
+.helper .linked {
+  color: #1d7a46;
+  font-weight: 600;
+}
+
+.helper .waiting {
+  color: #9a6400;
+}
