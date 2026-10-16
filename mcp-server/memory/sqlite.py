@@ -296,5 +296,31 @@ class SqliteMemoryStore:
     def remove_session(self, token_hash: str) -> None:
         self._db.execute("DELETE FROM sessions WHERE token_hash = ?", (token_hash,))
 
+    def add_pauses(self, company_id: str, user_id: str, pauses_ms: list[int]) -> None:
+        user, now = self._user_id(company_id, user_id), utc_now()
+        self._db.executemany(
+            "INSERT INTO pauses (user_id, ms, created_at) VALUES (?, ?, ?)", [(user, ms, now) for ms in pauses_ms]
+        )
+
+    def recent_pauses(self, company_id: str, user_id: str, limit: int) -> list[int]:
+        rows = self._db.execute(
+            f"SELECT p.ms FROM pauses p {OF_USER.format(table='p')} ORDER BY p.id DESC LIMIT ?",
+            (company_id, user_id, limit),
+        )
+        return [row["ms"] for row in rows]
+
+    def pause_wait(self, company_id: str, user_id: str) -> float | None:
+        row = self._db.execute(
+            f"SELECT w.seconds FROM pause_waits w {OF_USER.format(table='w')}", (company_id, user_id)
+        ).fetchone()
+        return row["seconds"] if row else None
+
+    def save_pause_wait(self, company_id: str, user_id: str, seconds: float) -> None:
+        self._db.execute(
+            "INSERT INTO pause_waits (user_id, seconds, updated_at) VALUES (?, ?, ?) "
+            "ON CONFLICT (user_id) DO UPDATE SET seconds = excluded.seconds, updated_at = excluded.updated_at",
+            (self._user_id(company_id, user_id), seconds, utc_now()),
+        )
+
     def close(self) -> None:
         self._db.close()
