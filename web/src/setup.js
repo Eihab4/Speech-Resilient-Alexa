@@ -1,5 +1,5 @@
 import { HELPERS_REFRESH_MS } from "./config.js";
-import { PeopleLabel } from "./messages.js";
+import { PeopleLabel, invitation } from "./messages.js";
 import { addHelper, listHelpers, loadProfile, removeHelper, saveProfile } from "./people.js";
 import { readPosition } from "./position.js";
 
@@ -14,6 +14,7 @@ export function setupPeople(section, getSession) {
   const status = section.querySelector("#people-status");
   const locationButton = section.querySelector("#allow-location");
   let refresh = null;
+  let shown = "";
 
   const show = (message) => (status.textContent = message);
 
@@ -44,11 +45,18 @@ export function setupPeople(section, getSession) {
       link.target = "_blank";
       link.rel = "noreferrer";
       link.textContent = helper.link;
+      const text = invitation(helper.name, getSession().name, helper.link);
       const copy = button(PeopleLabel.COPY, async () => {
-        await navigator.clipboard.writeText(helper.link);
-        copy.textContent = PeopleLabel.COPIED;
+        try {
+          await navigator.clipboard.writeText(text);
+          copy.textContent = PeopleLabel.COPIED;
+        } catch {
+          show(PeopleLabel.COPY_FAILED);
+        }
       });
       item.append(hint, link, copy);
+      // Phones can hand the invitation straight to WhatsApp or Messages.
+      if (navigator.share) item.append(button(PeopleLabel.SHARE, () => navigator.share({ text }).catch(() => {})));
     }
     item.append(button(PeopleLabel.REMOVE, () => run(() => removeHelper(token(), helper.id).then(refreshHelpers))));
     return item;
@@ -66,7 +74,12 @@ export function setupPeople(section, getSession) {
     clearTimeout(refresh);
     if (!token() || !section.open) return;
     const { telegram, helpers } = await listHelpers(token());
-    list.replaceChildren(...helpers.map(helperItem));
+    // Redrawn only when something changed, so a button isn't swapped out from under a click.
+    const current = JSON.stringify(helpers);
+    if (current !== shown) {
+      list.replaceChildren(...helpers.map(helperItem));
+      shown = current;
+    }
     show(telegram ? "" : PeopleLabel.NO_TELEGRAM);
     // Keep checking while someone hasn't opened their link, so "linked" shows up on its own.
     if (helpers.some((helper) => !helper.linked)) refresh = setTimeout(() => run(refreshHelpers), HELPERS_REFRESH_MS);
@@ -108,6 +121,7 @@ export function setupPeople(section, getSession) {
     close() {
       section.open = false;
       list.replaceChildren();
+      shown = "";
       addressInput.value = "";
       show("");
     },
