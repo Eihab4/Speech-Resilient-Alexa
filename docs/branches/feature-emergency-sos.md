@@ -95,7 +95,7 @@ flowchart TD
 - [x] **15. Settings:** `TELEGRAM_BOT_TOKEN`, `TELEGRAM_API_URL`, `TELEGRAM_POLL_SECONDS`, `TELEGRAM_TIMEOUT_SECONDS` in `config/settings.py` and `.env.example`. The bot's username comes from `getMe` the first time a link is needed.
 - [x] **16. Page, helper setup:** a **People who help me** part at the bottom of `web/index.html`, in `web/src/setup.js` and `web/src/people.js`:
   - the home address. The name in the alert is the name on the person's account.
-  - add a helper by name, and show their link with a copy button.
+  - add a helper by name, and show their link. **Copy invitation** copies a ready message for the helper (who added them, open the link, press Start); on a phone, **Share invitation** sends it straight to WhatsApp or Messages.
   - the list of helpers, showing "waiting" until they press Start, then "linked" (checked every 3 seconds while someone is waiting).
   - **Allow location for emergencies** asks for the browser's permission here, so the prompt never pops up during an emergency.
   - Not done: a QR code for the link. It needs a QR package in `web/`.
