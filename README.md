@@ -118,7 +118,7 @@ npm run dev
 
 Open the URL Vite prints (`http://localhost:5180` by default; set `WEB_PORT` in `web/.env` to change it) create an account (a username, the name Alexa calls you by, and a password), and send `tomorrow`, `doctor ten`, `yes`. The browser stays signed in until you sign out, so the family can sign in once for the person. The username is the person's `user_id` in the MCP tools; a real Alexa+ host knows the person from their Amazon account instead. Details: [feature-sign-in.md](docs/branches/feature-sign-in.md). The page has no AI of its own, so it makes the follow-up call Alexa would make: `do_confirmed_request` after a `done`, `cancel_request` after a `cancel`.
 
-To talk instead of type, press **Speak**. Every pause sends what was said as its own turn, so slow, broken-up speech reaches the server in pieces, the way Alexa would pass it on.
+To talk instead of type, press **Speak**. Alexa learns how long each person pauses in the middle of a sentence and waits that long before she answers, instead of jumping in at every pause; the pieces said meanwhile go to the server together, with the pauses measured between them. Details: [feature-learn-pauses.md](docs/branches/feature-learn-pauses.md).
 
 The microphone streams to the server's `/transcribe` WebSocket, which passes it to **Amazon Transcribe** and sends the text back; the AWS credentials never reach the browser, and the MCP tools still only receive text. This needs AWS credentials with Transcribe access (`AmazonTranscribeFullAccess`). If Transcribe can't be reached, the page falls back to the browser's own speech recognition (Chrome or Edge).
 
@@ -152,6 +152,7 @@ Everything is read from environment variables. `.env.example` lists every settin
 | `MEMORY_SUMMARY_TRIGGER_WORDS` | How long the history can get before older parts are summarized        |
 | `SOS_COUNTDOWN_SECONDS`        | How long Alexa waits for "stop" before sending an emergency alert     |
 | `SOS_COOLDOWN_MINUTES`         | How soon the same emergency alert can be sent again                   |
+| `PAUSE_START_SECONDS`, `PAUSE_MIN_SECONDS`, `PAUSE_MAX_SECONDS` | How long Alexa waits for a new person, and the limits of what she learns |
 | `TELEGRAM_BOT_TOKEN`           | The bot that delivers emergency alerts; empty writes them to the log  |
 | `LOCATION_ENABLED`             | Whether Amazon Location adds an address to emergency alerts           |
 
@@ -187,6 +188,7 @@ mcp-server/
   notify/       the one way messages leave the server: Telegram, or the log
   location/     Amazon Location, an address for emergency alerts
   people/       the page's account (sign up, sign in) and setup routes: the profile and the helpers
+  pacing/       learns how long each person pauses, so Alexa waits for them
   tools/        one file per MCP tool
   utils/        ids and time
 data/           recorded answers for mock mode
