@@ -194,11 +194,20 @@ class SqliteMemoryStore:
 
     def link_helper(self, link_code: str, telegram_chat_id: str) -> Helper | None:
         row = self._db.execute(
-            "UPDATE helpers SET telegram_chat_id = ?, linked_at = ? WHERE link_code = ? "
+            "UPDATE helpers SET telegram_chat_id = ?, linked_at = ? "
+            "WHERE link_code = ? AND (telegram_chat_id IS NULL OR telegram_chat_id = ?) "
             "RETURNING id, name, link_code, telegram_chat_id, linked_at, created_at",
-            (telegram_chat_id, utc_now(), link_code),
+            (telegram_chat_id, utc_now(), link_code, telegram_chat_id),
         ).fetchone()
         return Helper(**row) if row else None
+
+    def remove_helper(self, company_id: str, user_id: str, helper_id: str) -> bool:
+        row = self._db.execute(
+            "DELETE FROM helpers WHERE id = ? AND user_id = "
+            "(SELECT id FROM users WHERE company_id = ? AND external_id = ?) RETURNING id",
+            (helper_id, company_id, user_id),
+        ).fetchone()
+        return row is not None
 
     def add_alert(self, company_id: str, user_id: str, alert: Alert) -> Alert:
         self._db.execute(
