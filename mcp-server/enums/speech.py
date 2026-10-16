@@ -8,6 +8,7 @@ class NextMove(StrEnum):
     CANCEL = "cancel"
     DONE = "done"
     SWITCH = "switch"  # asked whether to drop the open request for a new one
+    SOS = "sos"  # counting down before an emergency alert; "stop" cancels it
 
 
 class Intent(StrEnum):
@@ -31,3 +32,9 @@ class TranscriptType(StrEnum):
     FINAL = "final"  # the person paused; this piece is one turn
     UNAVAILABLE = "unavailable"  # Transcribe could not start; the page falls back to the browser
     ERROR = "error"  # Transcribe failed after it started
+
+
+class AlertStatus(StrEnum):
+    SENT = "sent"  # at least one helper got it
+    FAILED = "failed"  # every helper's channel failed
+    NO_HELPER = "no_helper"  # nobody is linked to get it

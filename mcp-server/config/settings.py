@@ -49,6 +49,37 @@ class MemorySettings(Section):
     summary_trigger_words: int = 400
 
 
+class SosSettings(Section):
+    model_config = SettingsConfigDict(env_prefix="SOS_")
+
+    countdown_seconds: int = 5
+    cooldown_minutes: float = 2
+
+
+class TelegramSettings(Section):
+    model_config = SettingsConfigDict(env_prefix="TELEGRAM_")
+
+    bot_token: SecretStr | None = None
+    api_url: str = "https://api.telegram.org"
+    # How long one request for new messages waits on Telegram's side before it is asked again.
+    poll_seconds: int = 25
+    timeout_seconds: float = 10
+
+    @property
+    def enabled(self) -> bool:
+        return bool(self.bot_token and self.bot_token.get_secret_value())
+
+
+class LocationSettings(Section):
+    model_config = SettingsConfigDict(env_prefix="LOCATION_")
+
+    enabled: bool = True
+    language: str = "en"
+    # An emergency alert waits at most this long for the address; after that it goes with the map link only.
+    timeout_seconds: float = 2
+    region: str = Field(default="us-east-1", validation_alias="AWS_REGION")
+
+
 class BedrockSettings(Section):
     model_config = SettingsConfigDict(env_prefix="BEDROCK_")
 
@@ -103,6 +134,9 @@ class Settings(BaseModel):
     llm: LlmSettings = Field(default_factory=LlmSettings)
     mock: MockSettings = Field(default_factory=MockSettings)
     memory: MemorySettings = Field(default_factory=MemorySettings)
+    sos: SosSettings = Field(default_factory=SosSettings)
+    telegram: TelegramSettings = Field(default_factory=TelegramSettings)
+    location: LocationSettings = Field(default_factory=LocationSettings)
     bedrock: BedrockSettings = Field(default_factory=BedrockSettings)
     openrouter: OpenRouterSettings = Field(default_factory=OpenRouterSettings)
     groq: GroqSettings = Field(default_factory=GroqSettings)

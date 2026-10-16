@@ -28,9 +28,43 @@
         <p id="voice-hint" class="hint" aria-live="polite"></p>
       </form>
 
+      <p id="sos-countdown" class="sos-countdown" role="alert" hidden></p>
+
       <section id="conversation" aria-live="polite" aria-label="Conversation">
         <p class="empty">Try a short or incomplete phrase.</p>
       </section>
+
+      <details id="people" class="people">
+        <summary>People who help me</summary>
+        <p class="hint">For the family: who gets an alert when Alexa hears "I fell" or "help help".</p>
+
+        <form id="profile-form">
+          <label>
+            Name in the alert
+            <input id="profile-name" required autocomplete="off" placeholder="Ahmed" />
+          </label>
+          <label>
+            Home address
+            <input id="profile-address" autocomplete="off" placeholder="Sent when the device gives no location" />
+          </label>
+          <button type="submit">Save</button>
+        </form>
+
+        <form id="helper-form">
+          <label>
+            Add a helper
+            <input id="helper-name" required autocomplete="off" placeholder="Sara" />
+          </label>
+          <button type="submit">Add</button>
+        </form>
+
+        <ul id="helpers" aria-label="Helpers"></ul>
+
+        <div class="actions">
+          <button type="button" id="allow-location" class="secondary">Allow location for emergencies</button>
+        </div>
+        <p id="people-status" class="hint" aria-live="polite"></p>
+      </details>
     </main>
     <script type="module" src="/src/main.js"></script>
   </body>

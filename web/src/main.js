@@ -1,10 +1,13 @@
 import "./styles.css";
 import { Speaker } from "./enums.js";
-import { takeTurn } from "./mcp.js";
-import { MicLabel, MuteLabel, Note, SpeakerName, VoiceHint, voiceError } from "./messages.js";
+import { sendSos, takeTurn } from "./mcp.js";
+import { MicLabel, MuteLabel, Note, SosLabel, SpeakerName, VoiceHint, voiceError } from "./messages.js";
 import { pauseWhileSpeaking } from "./pause.js";
 import { createOutput } from "./output.js";
 import { createPollyVoice } from "./polly.js";
+import { readPosition } from "./position.js";
+import { setupPeople } from "./setup.js";
+import { createSos } from "./sos.js";
 import { createBrowserVoice, isBrowserVoiceSupported } from "./speak.js";
 import { createTranscribeListener, isMicSupported } from "./transcribe.js";
 import { createListener, isVoiceSupported } from "./voice.js";
@@ -17,11 +20,24 @@ const micButton = document.querySelector("#mic");
 const muteButton = document.querySelector("#mute");
 const voiceHint = document.querySelector("#voice-hint");
 const conversation = document.querySelector("#conversation");
+const sosCountdown = document.querySelector("#sos-countdown");
 let listener = null;
-const onSpeakingChange = pauseWhileSpeaking(
+const sos = createSos({
+  readPosition,
+  onTick: (seconds) => {
+    sosCountdown.hidden = seconds === 0;
+    sosCountdown.textContent = seconds ? SosLabel.countdown(seconds) : "";
+  },
+  onDue: () => (queue = queue.then(sendAlert)),
+});
+const pauseMic = pauseWhileSpeaking(
   () => listener,
   () => (voiceHint.textContent = VoiceHint.ALEXA_TALKING),
 );
+const onSpeakingChange = (speaking) => {
+  pauseMic(speaking);
+  if (!speaking) sos.begin();
+};
 const voices = [createPollyVoice(), ...(isBrowserVoiceSupported ? [createBrowserVoice()] : [])];
 const voice = createOutput(voices, { onSpeakingChange });
 
@@ -50,7 +66,9 @@ function sendTurn(words) {
     try {
       const result = await takeTurn(userId.value.trim(), words);
       addMessage(Speaker.ALEXA, result.say, result.next_move ? Note.nextMove(result.next_move) : "");
+      sos.follow(result);
       voice.speak(result.say);
+      if (!voice.speaking) sos.begin();
     } catch (error) {
       addMessage(Speaker.ALEXA, error.message, Note.ERROR);
     } finally {
@@ -58,6 +76,19 @@ function sendTurn(words) {
       sendButton.disabled = pending > 0;
     }
   });
+}
+
+// Queued behind the turns already sent, so a "stop" said just before the end still cancels it.
+async function sendAlert() {
+  const position = sos.take();
+  if (!position) return;
+  try {
+    const result = await sendSos(userId.value.trim(), await position);
+    addMessage(Speaker.ALEXA, result.say, Note.ALERT);
+    voice.speak(result.say);
+  } catch (error) {
+    addMessage(Speaker.ALEXA, error.message, Note.ERROR);
+  }
 }
 
 form.addEventListener("submit", (event) => {
@@ -133,3 +164,5 @@ function setupMute() {
 
 setupVoice();
 setupMute();
+const people = setupPeople(document.querySelector("#people"), () => userId.value.trim());
+userId.addEventListener("change", people.reload);

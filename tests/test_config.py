@@ -71,6 +71,9 @@ def test_env_example_lists_every_setting():
         "server": "MCP_",
         "llm": "LLM_",
         "memory": "MEMORY_",
+        "sos": "SOS_",
+        "telegram": "TELEGRAM_",
+        "location": "LOCATION_",
         "bedrock": "BEDROCK_",
         "openrouter": "OPENROUTER_",
         "groq": "GROQ_",
@@ -81,6 +84,7 @@ def test_env_example_lists_every_setting():
         ("bedrock", "region"): "AWS_REGION",
         ("transcribe", "region"): "AWS_REGION",
         ("polly", "region"): "AWS_REGION",
+        ("location", "region"): "AWS_REGION",
     }
 
     for section, fields in sections.items():

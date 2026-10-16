@@ -7,12 +7,14 @@ export const SpeakerName = Object.freeze({
 
 export const Note = Object.freeze({
   ERROR: "Error",
+  ALERT: "Emergency alert",
   nextMove: (move) => `Next: ${move}`,
 });
 
 export const ErrorMessage = Object.freeze({
   unreachable: (url) => `Could not reach the MCP server at ${url}.`,
   toolFailed: (name) => `${name} failed.`,
+  setupFailed: (status) => `The server answered ${status}.`,
 });
 
 export const MicLabel = Object.freeze({
@@ -41,3 +43,20 @@ const VOICE_ERRORS = Object.freeze({
 });
 
 export const voiceError = (code) => VOICE_ERRORS[code] ?? `Voice input stopped (${code}).`;
+
+export const SosLabel = Object.freeze({
+  countdown: (seconds) => `Emergency alert in ${seconds}… Say "stop" if you're okay.`,
+});
+
+export const PeopleLabel = Object.freeze({
+  LINKED: "Linked",
+  WAITING: "Waiting for them to open the link",
+  COPY: "Copy link",
+  COPIED: "Copied",
+  REMOVE: "Remove",
+  SAVED: "Saved.",
+  NO_TELEGRAM: "Telegram isn't set up on the server, so alerts only go to the server log.",
+  LOCATION_ON: "Location allowed. It's only read during an emergency.",
+  LOCATION_OFF: "No location from this device: alerts will give the home address instead.",
+  sendLink: (name) => `Send ${name} this link. Once they open it and press Start, they get the alerts.`,
+});

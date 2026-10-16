@@ -49,3 +49,34 @@ CREATE TABLE IF NOT EXISTS actions (
     result TEXT NOT NULL,
     created_at TEXT NOT NULL
 );
+
+-- Who the person is, for the emergency alert ("SOS from Ahmed").
+CREATE TABLE IF NOT EXISTS profiles (
+    user_id INTEGER PRIMARY KEY REFERENCES users(id),
+    name TEXT NOT NULL,
+    home_address TEXT,
+    updated_at TEXT NOT NULL
+);
+
+-- People who get the person's emergency alerts. A helper is linked once their Telegram chat is known.
+CREATE TABLE IF NOT EXISTS helpers (
+    id TEXT PRIMARY KEY,
+    user_id INTEGER NOT NULL REFERENCES users(id),
+    name TEXT NOT NULL,
+    link_code TEXT NOT NULL UNIQUE,
+    telegram_chat_id TEXT,
+    linked_at TEXT,
+    created_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS alerts (
+    id TEXT PRIMARY KEY,
+    user_id INTEGER NOT NULL REFERENCES users(id),
+    heard TEXT NOT NULL,
+    latitude REAL,
+    longitude REAL,
+    address TEXT,
+    text TEXT NOT NULL,
+    status TEXT NOT NULL,
+    created_at TEXT NOT NULL
+);

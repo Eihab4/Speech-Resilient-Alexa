@@ -3,11 +3,14 @@ import sqlite3
 from contextlib import contextmanager
 from pathlib import Path
 
-from enums import RequestStatus
-from memory.models import Action, Request, Summary, Turn
+from enums import AlertStatus, RequestStatus
+from memory.models import Action, Alert, Helper, Profile, Request, Summary, Turn
 from utils import hours_ago, utc_now
 
 SCHEMA = (Path(__file__).parent / "schema.sql").read_text()
+HELPER_COLUMNS = "h.id, h.name, h.link_code, h.telegram_chat_id, h.linked_at, h.created_at"
+ALERT_COLUMNS = "a.id, a.heard, a.latitude, a.longitude, a.address, a.text, a.status, a.created_at"
+OF_USER = "JOIN users u ON u.id = {table}.user_id WHERE u.company_id = ? AND u.external_id = ?"
 
 
 class SqliteMemoryStore:
@@ -140,6 +143,103 @@ class SqliteMemoryStore:
             (conversation_id,),
         )
         return [Action(**row) for row in rows]
+
+    def _user_id(self, company_id: str, user_id: str) -> int:
+        with self._transaction():
+            self._db.execute("INSERT OR IGNORE INTO companies (id) VALUES (?)", (company_id,))
+            self._db.execute(
+                "INSERT OR IGNORE INTO users (company_id, external_id) VALUES (?, ?)", (company_id, user_id)
+            )
+            row = self._db.execute(
+                "SELECT id FROM users WHERE company_id = ? AND external_id = ?", (company_id, user_id)
+            ).fetchone()
+        return row["id"]
+
+    def save_profile(self, company_id: str, user_id: str, profile: Profile) -> None:
+        self._db.execute(
+            "INSERT INTO profiles (user_id, name, home_address, updated_at) VALUES (?, ?, ?, ?) "
+            "ON CONFLICT (user_id) DO UPDATE SET name = excluded.name, home_address = excluded.home_address, "
+            "updated_at = excluded.updated_at",
+            (self._user_id(company_id, user_id), profile.name, profile.home_address, utc_now()),
+        )
+
+    def profile(self, company_id: str, user_id: str) -> Profile | None:
+        row = self._db.execute(
+            f"SELECT p.name, p.home_address FROM profiles p {OF_USER.format(table='p')}", (company_id, user_id)
+        ).fetchone()
+        return Profile(**row) if row else None
+
+    def add_helper(self, company_id: str, user_id: str, helper: Helper) -> Helper:
+        self._db.execute(
+            "INSERT INTO helpers (id, user_id, name, link_code, telegram_chat_id, linked_at, created_at) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?)",
+            (
+                helper.id,
+                self._user_id(company_id, user_id),
+                helper.name,
+                helper.link_code,
+                helper.telegram_chat_id,
+                helper.linked_at,
+                helper.created_at,
+            ),
+        )
+        return helper
+
+    def helpers(self, company_id: str, user_id: str) -> list[Helper]:
+        rows = self._db.execute(
+            f"SELECT {HELPER_COLUMNS} FROM helpers h {OF_USER.format(table='h')} ORDER BY h.rowid",
+            (company_id, user_id),
+        )
+        return [Helper(**row) for row in rows]
+
+    def link_helper(self, link_code: str, telegram_chat_id: str) -> Helper | None:
+        row = self._db.execute(
+            "UPDATE helpers SET telegram_chat_id = ?, linked_at = ? "
+            "WHERE link_code = ? AND (telegram_chat_id IS NULL OR telegram_chat_id = ?) "
+            "RETURNING id, name, link_code, telegram_chat_id, linked_at, created_at",
+            (telegram_chat_id, utc_now(), link_code, telegram_chat_id),
+        ).fetchone()
+        return Helper(**row) if row else None
+
+    def remove_helper(self, company_id: str, user_id: str, helper_id: str) -> bool:
+        row = self._db.execute(
+            "DELETE FROM helpers WHERE id = ? AND user_id = "
+            "(SELECT id FROM users WHERE company_id = ? AND external_id = ?) RETURNING id",
+            (helper_id, company_id, user_id),
+        ).fetchone()
+        return row is not None
+
+    def add_alert(self, company_id: str, user_id: str, alert: Alert) -> Alert:
+        self._db.execute(
+            "INSERT INTO alerts (id, user_id, heard, latitude, longitude, address, text, status, created_at) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            (
+                alert.id,
+                self._user_id(company_id, user_id),
+                alert.heard,
+                alert.latitude,
+                alert.longitude,
+                alert.address,
+                alert.text,
+                alert.status,
+                alert.created_at,
+            ),
+        )
+        return alert
+
+    def last_sent_alert(self, company_id: str, user_id: str) -> Alert | None:
+        row = self._db.execute(
+            f"SELECT {ALERT_COLUMNS} FROM alerts a {OF_USER.format(table='a')} AND a.status = ? "
+            "ORDER BY a.rowid DESC LIMIT 1",
+            (company_id, user_id, AlertStatus.SENT),
+        ).fetchone()
+        return Alert(**row) if row else None
+
+    def alerts(self, company_id: str, user_id: str) -> list[Alert]:
+        rows = self._db.execute(
+            f"SELECT {ALERT_COLUMNS} FROM alerts a {OF_USER.format(table='a')} ORDER BY a.rowid", (company_id, user_id)
+        )
+        return [Alert(**row) for row in rows]
 
     def close(self) -> None:
         self._db.close()
