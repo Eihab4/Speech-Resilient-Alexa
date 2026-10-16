@@ -72,6 +72,7 @@ def test_env_example_lists_every_setting():
         "llm": "LLM_",
         "memory": "MEMORY_",
         "sos": "SOS_",
+        "pause": "PAUSE_",
         "telegram": "TELEGRAM_",
         "location": "LOCATION_",
         "bedrock": "BEDROCK_",
