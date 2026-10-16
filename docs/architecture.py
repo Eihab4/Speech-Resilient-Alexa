@@ -22,8 +22,6 @@ from diagrams.programming.language import Python
 from diagrams.saas.chat import Telegram
 
 OUTPUT = Path(__file__).with_name("architecture")
-# Planned, not built yet.
-NEXT = {"style": "dashed", "color": "#8a8f98", "fontcolor": "#5f6670"}
 # Curved edges keep each label next to its arrow; Graphviz misplaces labels on square ones.
 GRAPH = {"pad": "0.6", "nodesep": "1.0", "ranksep": "1.3", "fontsize": "28", "labelloc": "t", "splines": "spline"}
 EDGE = {"fontsize": "13", "color": "#5f6670"}
@@ -64,14 +62,14 @@ with Diagram(
         transcribe = Transcribe(below("Amazon Transcribe\nspeech to text"))
         polly = Polly(below("Amazon Polly\nneural voice"))
         bedrock = Bedrock(below("Amazon Bedrock\n(optional brain)"))
-        location = General(below("Amazon Location\n(next)"))
+        location = General(below("Amazon Location\naddress for alerts"))
         IAM(below("IAM user\nspeech-resilient-alexa"))
 
     with Cluster("Hosted LLMs"):
         openrouter = Internet(below("OpenRouter"))
         groq = Internet(below("Groq"))
 
-    telegram = Telegram(below("Telegram Bot API\n(next)"))
+    telegram = Telegram(below("Telegram Bot API"))
     phone = Mobile(below("Helper's phone"))
 
     person >> Edge(label="talks") >> alexa
@@ -86,6 +84,6 @@ with Diagram(
     brain >> openrouter
     brain >> groq
     tools - Edge(label="every turn") - memory
-    tools >> Edge(label="emergency_sos: address", **NEXT) >> location
-    tools >> Edge(label="emergency_sos: notify()", **NEXT) >> telegram
-    telegram >> Edge(label="alert + map pin", **NEXT) >> phone
+    tools >> Edge(label="emergency_sos: address") >> location
+    tools >> Edge(label="emergency_sos: notify()") >> telegram
+    telegram >> Edge(label="alert + map pin") >> phone

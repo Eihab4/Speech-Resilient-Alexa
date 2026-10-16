@@ -61,7 +61,7 @@ flowchart TD
 - [x] **5. `notify()`:** the `mcp-server/notify/` package, the one way messages leave the server, as `TASKS.md` asks:
   - `base.py`: `Notifier` with `notify(helper, text, position=None)`, which raises when the helper can't be reached.
   - `simulated.py`: writes the alert to the server log instead of sending it.
-  - `factory.py`: simulated for now. Part 2 picks Telegram when `TELEGRAM_BOT_TOKEN` is set, like `brain/factory.py` picks the mock brain.
+  - `factory.py`: Telegram when `TELEGRAM_BOT_TOKEN` is set, the log otherwise, like `brain/factory.py` picks the mock brain.
 - [x] **6. Tool, `tools/emergency_sos.py`:** `emergency_sos(user_id, latitude=None, longitude=None)`. Sends right away, with no countdown and no yes: the countdown happens before it is called.
   - The alert: "🚨 SOS from {name}.", what they said during the countdown, a Google Maps link (or the home address, or "Location unknown."), and the time.
   - Sends to every linked helper through `notify()`. One helper's channel failing doesn't stop the others.
@@ -80,25 +80,28 @@ flowchart TD
 
 ### Part 2: Telegram and helpers
 
-- [ ] **12. Telegram notifier, `notify/telegram.py`:** `sendMessage` with the alert text, then `sendLocation` for the map pin. Plain HTTPS calls to the Bot API, with a short timeout. `factory.py` picks it when the token is set.
-- [ ] **13. Linking helpers:** a background task started in the server's lifespan reads the bot's updates (`getUpdates`, long polling), so it works on localhost with no public URL.
-  - `/start <link_code>` from a helper: `link_helper` saves their `telegram_chat_id`, and the bot replies "You'll now get alerts from {name}."
-  - `/start` with no code or a wrong one: reply that the link is not valid.
-- [ ] **14. Routes:** plain HTTP routes next to `/speak`, not MCP tools (see Decisions):
-  - `PUT /profile`: the person's name and home address.
+- [x] **12. Telegram notifier, `notify/telegram.py`:** `TelegramBot` makes plain HTTPS calls to the Bot API with a short timeout. `TelegramNotifier` sends the alert with `sendMessage`, then the map pin with `sendLocation`; a pin that fails is logged, and the alert still counts as sent.
+- [x] **13. Linking helpers:** `HelperLinker` runs in a background thread started in the server's lifespan, on its own database connection. It reads the bot's messages (`getUpdates`, long polling), so it works on localhost with no public URL.
+  - `/start <link_code>` from a helper: `link_helper` saves their `telegram_chat_id`, and the bot replies "You're linked as Sara."
+  - `/start` with no code or a wrong one: the bot says the link doesn't work.
+  - A used link can't be taken by another chat; the same helper opening it again is fine.
+- [x] **14. Routes, `people/routes.py`:** plain HTTP routes next to `/speak`, not MCP tools (see Decisions):
+  - `GET /profile?user_id=` and `PUT /profile`: the person's name and home address.
   - `POST /helpers`: a helper's name. Returns the link `https://t.me/<bot>?start=<link_code>`.
-  - `GET /helpers?user_id=`: the helpers, and whether each one is linked yet.
-  - `DELETE /helpers/{id}`: remove a helper.
-- [ ] **15. Settings:** `TELEGRAM_BOT_TOKEN`, `TELEGRAM_POLL_SECONDS` in `config/settings.py` and `.env.example`. The bot's username comes from `getMe` at startup.
-- [ ] **16. Page, helper setup:** a "People who help me" part in `web/index.html`:
+  - `GET /helpers?user_id=`: the helpers, whether each one is linked, and whether Telegram is set up.
+  - `DELETE /helpers/{id}?user_id=`: remove a helper, only one of this person's.
+  - CORS now allows `PUT` for the page.
+- [x] **15. Settings:** `TELEGRAM_BOT_TOKEN`, `TELEGRAM_API_URL`, `TELEGRAM_POLL_SECONDS`, `TELEGRAM_TIMEOUT_SECONDS` in `config/settings.py` and `.env.example`. The bot's username comes from `getMe` the first time a link is needed.
+- [x] **16. Page, helper setup:** a **People who help me** part at the bottom of `web/index.html`, in `web/src/setup.js` and `web/src/people.js`:
   - the person's name and home address.
-  - add a helper by name. Show their link, and a QR code for a phone to scan.
-  - the list of helpers, showing "waiting" until they press Start, then "linked".
-  - ask for the browser's location permission here, so the prompt never pops up during an emergency.
+  - add a helper by name, and show their link with a copy button.
+  - the list of helpers, showing "waiting" until they press Start, then "linked" (checked every 3 seconds while someone is waiting).
+  - **Allow location for emergencies** asks for the browser's permission here, so the prompt never pops up during an emergency.
+  - Not done: a QR code for the link. It needs a QR package in `web/`.
 
 ### Part 3: the address
 
-- [ ] **17. Address, `mcp-server/location/`:** Amazon Location `ReverseGeocode` (the `geo-places` client; the position is longitude first). A 2 second timeout. Any failure: send the pin without an address. `LOCATION_TIMEOUT_SECONDS` (2) in settings. Saved in `alerts.address`.
+- [x] **17. Address, `mcp-server/location/`:** `AmazonLocationGeocoder` calls `ReverseGeocode` (the `geo-places` client; the position is longitude first), with one try and a 2 second timeout. Any failure gives no address, and the alert goes with the map link only. The alert reads "Where: {address}" then "Map: {link}", and the address is saved in `alerts.address`. `LOCATION_ENABLED`, `LOCATION_LANGUAGE` and `LOCATION_TIMEOUT_SECONDS` in settings.
 
 ### Part 4: if there's time
 
@@ -106,12 +109,14 @@ flowchart TD
 
 ### Finish
 
-- [x] **19. Tests (Part 1):** see below.
+- [x] **19. Tests (Parts 1 to 3):** see below.
 - [x] **20. Try it (Part 1):** in the page, with Alexa muted and a helper added straight in the database: "uh… I fell" showed the countdown and, after 5 seconds, the alert went out (in the server log) and Alexa said "I sent Sara an alert." "help help" right after said it was already sent. "emergency" then "stop" sent nothing.
 - [ ] **21. Try it (all):** link a teammate's Telegram, say "I fell" and wait: their phone gets the message and the pin. Then say "help help" and "stop": nothing is sent.
 - [ ] **22. Docs:** tick `emergency_sos` in `TASKS.md`, and add the alerts, profiles and helpers tables to `docs/memory.md`.
 
 ## Decisions
+
+- **Tests never reach Telegram or AWS.** `tests/conftest.py` starts every server with no bot token and Amazon Location off. The Telegram tests run a fake Bot API on localhost, and the Location tests use a fake `geo-places` client.
 
 - **A countdown, not a yes.** A yes protects from false alarms, but someone who fell may not be able to say it. The countdown protects from false alarms too, and silence still sends.
 - **The countdown lets the trigger words be loose.** The speech is broken, so the words must match even when said badly. A false match costs one "stop", not an alert.
@@ -156,7 +161,10 @@ Part 1:
 - One failing helper doesn't stop the others; all failing says so.
 - Page: the countdown waits for Alexa, counts down and sends; another move clears it, even after the end if the alert hasn't left; more `sos` replies don't restart it; the location is read once (fake timers).
 
-Still to write:
+Parts 2 and 3 (`tests/test_telegram.py`, `tests/test_location.py`):
 
-- `/start` with a valid code links the helper; a wrong code does not (a fake Telegram, no network).
-- The address when Location answers, and no address when it fails or is slow.
+- A new helper gets a link to the bot; opening it links them and the bot says so; a wrong link links nobody; a used link can't be taken by another chat.
+- The alert reaches the helper on Telegram with a map pin; a missing pin still counts as sent; Telegram refusing the alert makes Alexa say so.
+- Without a bot token, helpers get no link and the page is told Telegram isn't set up.
+- The profile is saved and read back; missing fields are refused; a helper can only be removed by their own person; the page may send `PUT` from another port.
+- The address label comes back with the position longitude first; no result or an AWS error gives no address; the alert then still goes with the map.
