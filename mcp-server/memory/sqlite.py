@@ -45,6 +45,12 @@ class SqliteMemoryStore:
         self._db.execute("PRAGMA journal_mode=WAL")
         self._db.execute("PRAGMA foreign_keys=ON")
         self._db.executescript(SCHEMA)
+        self._add_missing_columns()
+
+    def _add_missing_columns(self) -> None:
+        columns = {row["name"] for row in self._db.execute("PRAGMA table_info(sessions)")}
+        if "expires_at" not in columns:
+            self._db.execute("ALTER TABLE sessions ADD COLUMN expires_at TEXT NOT NULL DEFAULT ''")
 
     @contextmanager
     def _transaction(self):
@@ -279,17 +285,17 @@ class SqliteMemoryStore:
         ).fetchone()
         return row["password_hash"] if row else None
 
-    def add_session(self, company_id: str, username: str, token_hash: str) -> None:
+    def add_session(self, company_id: str, username: str, token_hash: str, expires_at: str) -> None:
         self._db.execute(
-            "INSERT INTO sessions (token_hash, user_id, created_at) VALUES (?, ?, ?)",
-            (token_hash, self._user_id(company_id, username), utc_now()),
+            "INSERT INTO sessions (token_hash, user_id, created_at, expires_at) VALUES (?, ?, ?, ?)",
+            (token_hash, self._user_id(company_id, username), utc_now(), expires_at),
         )
 
     def session_user(self, company_id: str, token_hash: str) -> str | None:
         row = self._db.execute(
             "SELECT u.external_id FROM sessions s JOIN users u ON u.id = s.user_id "
-            "WHERE s.token_hash = ? AND u.company_id = ?",
-            (token_hash, company_id),
+            "WHERE s.token_hash = ? AND u.company_id = ? AND s.expires_at > ?",
+            (token_hash, company_id, utc_now()),
         ).fetchone()
         return row["external_id"] if row else None
 

@@ -12,7 +12,8 @@ from starlette.routing import Route
 from memory import Helper, MemoryStore, Profile
 from messages import TELEGRAM_LINK, ErrorMessage
 from notify import TelegramBot, TelegramError
-from people.passwords import check_password, hash_password, new_token, token_hash
+from people.passwords import check_password, hash_password
+from people.sessions import Sessions
 
 logger = logging.getLogger(__name__)
 
@@ -63,14 +64,15 @@ def _bearer(request: Request) -> str:
     return token.strip() if scheme.lower() == "bearer" else ""
 
 
-def create_people_routes(store: MemoryStore, bot: TelegramBot | None, company_id: str) -> list[Route]:
+def create_people_routes(
+    store: MemoryStore, sessions: Sessions, bot: TelegramBot | None, company_id: str
+) -> list[Route]:
     """The page's own account and setup, done on a screen, not by voice: signing in, the person's profile, and
     who gets their emergency alerts. Plain routes, not MCP tools, so they stay out of the tools an AI host
     chooses from. The username is the person's user_id in the MCP tools."""
 
     def signed_in(request: Request) -> str | None:
-        token = _bearer(request)
-        return store.session_user(company_id, token_hash(token)) if token else None
+        return sessions.user_for(_bearer(request))
 
     def requires_sign_in(handler: Callable[[Request, str], Awaitable[Response]]) -> Callable:
         async def endpoint(request: Request) -> Response:
@@ -81,8 +83,7 @@ def create_people_routes(store: MemoryStore, bot: TelegramBot | None, company_id
         return endpoint
 
     def session_for(username: str) -> dict:
-        token = new_token()
-        store.add_session(company_id, username, token_hash(token))
+        token = sessions.open(username)
         profile = store.profile(company_id, username)
         return {"token": token, "username": username, "name": profile.name if profile else username}
 
@@ -115,7 +116,7 @@ def create_people_routes(store: MemoryStore, bot: TelegramBot | None, company_id
 
     async def sign_out(request: Request) -> Response:
         if token := _bearer(request):
-            store.remove_session(token_hash(token))
+            sessions.close(token)
         return Response(status_code=HTTPStatus.NO_CONTENT)
 
     async def me(request: Request, username: str) -> Response:

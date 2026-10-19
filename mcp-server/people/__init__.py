@@ -1,3 +1,4 @@
 from people.routes import create_people_routes
+from people.sessions import Sessions
 
-__all__ = ["create_people_routes"]
+__all__ = ["Sessions", "create_people_routes"]

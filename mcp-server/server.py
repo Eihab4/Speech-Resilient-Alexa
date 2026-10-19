@@ -14,7 +14,7 @@ from location import create_geocoder
 from memory import History, SqliteMemoryStore
 from messages import ToolDescription
 from notify import HelperLinker, create_bot, create_notifier
-from people import create_people_routes
+from people import Sessions, create_people_routes
 from speech import PollySynthesizer, create_speak_endpoint
 from tools.cancel_request import cancel_request as cancel
 from tools.do_confirmed_request import do_confirmed_request as do_confirmed
@@ -116,7 +116,9 @@ def create_app():
     app.router.routes.append(WebSocketRoute(settings.transcribe.path, transcribe))
     speak = create_speak_endpoint(PollySynthesizer(settings.polly))
     app.router.routes.append(Route(settings.polly.path, speak, methods=["POST"]))
-    app.router.routes.extend(create_people_routes(open_store(), bot, settings.memory.company_id))
+    people = open_store()
+    sessions = Sessions(people, settings.memory.company_id, settings.session.ttl_hours)
+    app.router.routes.extend(create_people_routes(people, sessions, bot, settings.memory.company_id))
     return app
 
 

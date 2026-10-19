@@ -79,6 +79,7 @@ def test_env_example_lists_every_setting():
         "groq": "GROQ_",
         "transcribe": "TRANSCRIBE_",
         "polly": "POLLY_",
+        "session": "SESSION_",
     }
     aliases = {
         ("bedrock", "region"): "AWS_REGION",
