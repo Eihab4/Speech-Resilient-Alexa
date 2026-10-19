@@ -24,8 +24,8 @@ const sosCountdown = document.querySelector("#sos-countdown");
 const emptyConversation = conversation.innerHTML;
 let listener = null;
 let signedIn = null;
-// The username is the person's user_id in the MCP tools, as the Amazon account would be on a real Alexa+.
-const currentId = () => signedIn?.session?.username ?? "";
+// The sign-in token names the person on every call, as the Amazon account would on a real Alexa+.
+const currentToken = () => signedIn?.session?.token ?? "";
 const sos = createSos({
   readPosition,
   onTick: (seconds) => {
@@ -42,7 +42,7 @@ const onSpeakingChange = (speaking) => {
   pauseMic(speaking);
   if (!speaking) sos.begin();
 };
-const voices = [createPollyVoice(), ...(isBrowserVoiceSupported ? [createBrowserVoice()] : [])];
+const voices = [createPollyVoice(currentToken), ...(isBrowserVoiceSupported ? [createBrowserVoice()] : [])];
 const voice = createOutput(voices, { onSpeakingChange });
 
 function addMessage(speaker, text, note = "") {
@@ -68,7 +68,7 @@ function sendTurn(words) {
 
   queue = queue.then(async () => {
     try {
-      const result = await takeTurn(currentId(), words);
+      const result = await takeTurn(currentToken(), words);
       addMessage(Speaker.ALEXA, result.say, result.next_move ? Note.nextMove(result.next_move) : "");
       sos.follow(result);
       voice.speak(result.say);
@@ -87,7 +87,7 @@ async function sendAlert() {
   const position = sos.take();
   if (!position) return;
   try {
-    const result = await sendSos(currentId(), await position);
+    const result = await sendSos(currentToken(), await position);
     addMessage(Speaker.ALEXA, result.say, Note.ALERT);
     voice.speak(result.say);
   } catch (error) {
@@ -109,6 +109,7 @@ let usingBrowser = false;
 const ownHints = [VoiceHint.LISTENING, VoiceHint.LISTENING_IN_BROWSER];
 
 const listenerEvents = {
+  token: currentToken,
   onInterim: (text) => {
     heard.value = text;
   },

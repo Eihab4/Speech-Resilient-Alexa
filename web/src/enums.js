@@ -23,6 +23,10 @@ export const Speaker = Object.freeze({
 });
 
 // Mirrors TranscriptType in mcp-server/enums/speech.py.
+export const SocketProtocol = Object.freeze({
+  BEARER: "bearer",
+});
+
 export const TranscriptType = Object.freeze({
   PARTIAL: "partial",
   FINAL: "final",
