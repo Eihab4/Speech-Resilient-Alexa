@@ -9,6 +9,7 @@
 
 ## Memory
 
+- [x] **Eihab — The tools know the person from the sign-in:** every MCP call, `/speak` and `/transcribe` carry the session token, and the server takes the person from it, never from a `user_id` in the input. Sessions expire after `SESSION_TTL_HOURS`. Details: [feature-mcp-auth.md](branches/feature-mcp-auth.md).
 - [x] **Rana — New request in the middle of one:** when the person starts something different while a request is open, Alexa asks before switching ("Should I stop the doctor reminder and call Mom instead?"), so each request stays its own row. Details: [feature-new-request.md](branches/feature-new-request.md).
 - [ ] **Rana — Usual requests (after the task above):** Alexa counts what the person asks for most and uses it to understand broken speech faster ("c… mom" → "Call Mom?"). Still asks for yes. Details: [feature-usual-requests.md](branches/feature-usual-requests.md).
 - [ ] **Bug — `cancel` saved as an intent:** when the person cancels, the request is saved with `intent = "cancel"`, which isn't a valid intent (only reminder, message, call).
