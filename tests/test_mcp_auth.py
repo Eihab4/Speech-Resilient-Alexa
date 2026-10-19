@@ -11,7 +11,7 @@ async def say(client, heard):
 
 
 async def tool_inputs(client):
-    return {tool.name: set(tool.inputSchema["properties"]) for tool in await client.list_tools()}
+    return {tool.name: set(tool.input_schema["properties"]) for tool in await client.list_tools()}
 
 
 def test_the_tools_need_a_sign_in(server):

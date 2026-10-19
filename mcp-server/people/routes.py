@@ -1,6 +1,5 @@
 import logging
 import re
-from collections.abc import Awaitable, Callable
 from http import HTTPStatus
 
 from pydantic import BaseModel, ConfigDict, ValidationError
@@ -12,6 +11,7 @@ from starlette.routing import Route
 from memory import Helper, MemoryStore, Profile
 from messages import TELEGRAM_LINK, ErrorMessage
 from notify import TelegramBot, TelegramError
+from people.guard import Guard, bearer
 from people.passwords import check_password, hash_password
 from people.sessions import Sessions
 
@@ -59,28 +59,12 @@ async def _read[T: Body](request: Request, model: type[T]) -> T:
         return model()
 
 
-def _bearer(request: Request) -> str:
-    scheme, _, token = request.headers.get("authorization", "").partition(" ")
-    return token.strip() if scheme.lower() == "bearer" else ""
-
-
 def create_people_routes(
-    store: MemoryStore, sessions: Sessions, bot: TelegramBot | None, company_id: str
+    store: MemoryStore, sessions: Sessions, guard: Guard, bot: TelegramBot | None, company_id: str
 ) -> list[Route]:
     """The page's own account and setup, done on a screen, not by voice: signing in, the person's profile, and
     who gets their emergency alerts. Plain routes, not MCP tools, so they stay out of the tools an AI host
     chooses from. The username is the person's user_id in the MCP tools."""
-
-    def signed_in(request: Request) -> str | None:
-        return sessions.user_for(_bearer(request))
-
-    def requires_sign_in(handler: Callable[[Request, str], Awaitable[Response]]) -> Callable:
-        async def endpoint(request: Request) -> Response:
-            if not (username := signed_in(request)):
-                return _error(ErrorMessage.NOT_SIGNED_IN, HTTPStatus.UNAUTHORIZED)
-            return await handler(request, username)
-
-        return endpoint
 
     def session_for(username: str) -> dict:
         token = sessions.open(username)
@@ -115,7 +99,7 @@ def create_people_routes(
         return JSONResponse(session_for(username))
 
     async def sign_out(request: Request) -> Response:
-        if token := _bearer(request):
+        if token := bearer(request):
             sessions.close(token)
         return Response(status_code=HTTPStatus.NO_CONTENT)
 
@@ -170,10 +154,10 @@ def create_people_routes(
         Route("/signup", sign_up, methods=["POST"]),
         Route("/signin", sign_in, methods=["POST"]),
         Route("/signout", sign_out, methods=["POST"]),
-        Route("/me", requires_sign_in(me), methods=["GET"]),
-        Route("/profile", requires_sign_in(get_profile), methods=["GET"]),
-        Route("/profile", requires_sign_in(save_profile), methods=["PUT"]),
-        Route("/helpers", requires_sign_in(list_helpers), methods=["GET"]),
-        Route("/helpers", requires_sign_in(add_helper), methods=["POST"]),
-        Route("/helpers/{helper_id}", requires_sign_in(remove_helper), methods=["DELETE"]),
+        Route("/me", guard.require(me), methods=["GET"]),
+        Route("/profile", guard.require(get_profile), methods=["GET"]),
+        Route("/profile", guard.require(save_profile), methods=["PUT"]),
+        Route("/helpers", guard.require(list_helpers), methods=["GET"]),
+        Route("/helpers", guard.require(add_helper), methods=["POST"]),
+        Route("/helpers/{helper_id}", guard.require(remove_helper), methods=["DELETE"]),
     ]

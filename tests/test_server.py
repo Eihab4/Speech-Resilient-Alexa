@@ -77,12 +77,37 @@ def test_voice_socket_refuses_other_sites(server):
         asyncio.run(connect())
 
 
-@pytest.mark.skipif(not boto3.Session().get_credentials(), reason="needs AWS credentials")
-def test_voice_socket_streams_to_transcribe(server):
+async def first_message(url, **options):
+    async with ws_connect(url, origin="http://localhost:5180", **options) as socket:
+        return json.loads(await socket.recv())
+
+
+def test_voice_socket_refuses_a_stranger(server):
     url = transcribe_url(server())
 
+    with pytest.raises(InvalidStatus):
+        asyncio.run(first_message(url))
+
+    with pytest.raises(InvalidStatus):
+        asyncio.run(first_message(url, subprotocols=["bearer", "not-a-session"]))
+
+
+def test_voice_socket_opens_for_a_signed_in_person(server):
+    url = server(AWS_ACCESS_KEY_ID="invalid", AWS_SECRET_ACCESS_KEY="invalid", AWS_SESSION_TOKEN=None)
+
+    message = asyncio.run(first_message(transcribe_url(url), subprotocols=["bearer", token_for(url)]))
+
+    assert message["type"] == TranscriptType.UNAVAILABLE
+
+
+@pytest.mark.skipif(not boto3.Session().get_credentials(), reason="needs AWS credentials")
+def test_voice_socket_streams_to_transcribe(server):
+    url = server()
+    token = token_for(url)
+    url = transcribe_url(url)
+
     async def stream_silence():
-        async with ws_connect(url, origin="http://localhost:5180") as socket:
+        async with ws_connect(url, origin="http://localhost:5180", subprotocols=["bearer", token]) as socket:
             for _ in range(10):
                 await socket.send(b"\x00\x00" * 1600)  # 100 ms of 16 kHz silence
             await socket.send("stop")

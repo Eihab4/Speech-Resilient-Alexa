@@ -25,6 +25,10 @@ class RequestStatus(StrEnum):
     REPLACED = "replaced"  # left unfinished because the person moved to another request
 
 
+class SocketProtocol(StrEnum):
+    BEARER = "bearer"
+
+
 class TranscriptType(StrEnum):
     """What the /transcribe WebSocket sends back to the page."""
 

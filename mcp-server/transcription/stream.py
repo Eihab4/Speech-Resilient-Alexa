@@ -9,7 +9,7 @@ from awscrt.exceptions import AwsCrtError
 from starlette.websockets import WebSocket, WebSocketDisconnect, WebSocketState
 
 from config.settings import TranscribeSettings
-from enums import TranscriptType
+from enums import SocketProtocol, TranscriptType
 
 logger = logging.getLogger(__name__)
 
@@ -55,7 +55,11 @@ async def _forward_audio(websocket: WebSocket, input_stream) -> None:
         await input_stream.end_stream()
 
 
-def create_transcribe_endpoint(settings: TranscribeSettings, is_allowed_origin: Callable[[str | None], bool]):
+def create_transcribe_endpoint(
+    settings: TranscribeSettings,
+    is_allowed_origin: Callable[[str | None], bool],
+    user_of: Callable[[WebSocket], str | None],
+):
     """A WebSocket endpoint: 16-bit mono PCM in, {"type", "text"} transcripts out.
 
     The AWS credentials stay on the server; the browser only ever sees text.
@@ -63,10 +67,11 @@ def create_transcribe_endpoint(settings: TranscribeSettings, is_allowed_origin: 
 
     async def endpoint(websocket: WebSocket) -> None:
         # Browsers always send Origin, and CORS does not cover WebSockets, so check it here.
-        if not is_allowed_origin(websocket.headers.get("origin")):
+        if not is_allowed_origin(websocket.headers.get("origin")) or user_of(websocket) is None:
             await websocket.close(code=FORBIDDEN_ORIGIN)
             return
-        await websocket.accept()
+        offered = SocketProtocol.BEARER in websocket.headers.get("sec-websocket-protocol", "")
+        await websocket.accept(subprotocol=SocketProtocol.BEARER if offered else None)
 
         relay = None
         try:
