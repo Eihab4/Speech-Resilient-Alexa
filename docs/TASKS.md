@@ -16,7 +16,7 @@
 - [ ] **Rana — Usual requests (after the task above):** Alexa counts what the person asks for most and uses it to understand broken speech faster ("c… mom" → "Call Mom?"). Still asks for yes. Details: [feature-usual-requests.md](branches/feature-usual-requests.md).
 - [x] **Rana — Sign-in:** a username and password per person, so two people with the same name never share a memory; Alexa calls the person by the name on their account. Details: [feature-sign-in.md](branches/feature-sign-in.md).
 - [x] **Stability:** one lock on the shared SQLite connection, and the server waits for the history tidy-up before closing (both could crash it).
-- [ ] **Bug — the brain treats a finished request as open:** the history notes how a cancelled or replaced request ended, but not a finished one, so after "call mom" is done the brain may ask "Should I stop the doctor reminder…?". Add "(this request was done)" in `REQUEST_ENDINGS` (`mcp-server/messages/prompts.py`).
+- [x] **Eihab — Bug — the brain treats a finished request as open:** the history now says "(this request was done)" after a finished request, like it already did for cancelled and replaced ones.
 - [ ] **Bug — `cancel` saved as an intent:** when the person cancels, the request is saved with `intent = "cancel"`, which isn't a valid intent (only reminder, message, call).
 
 ## New tools

@@ -60,24 +60,28 @@ def test_a_short_conversation_shows_the_brain_the_full_history(store):
 
     history.maintain(conversation)
 
-    assert history.for_brain(conversation) == "person: call mom\nalexa: Call Mom?\nperson: yes\nalexa: Okay."
+    assert history.for_brain(conversation) == (
+        "person: call mom\nalexa: Call Mom?\nperson: yes\nalexa: Okay.\n(this request was done)"
+    )
     assert store.summary(conversation).text == ""
 
 
 @pytest.mark.parametrize(
     ("status", "note"),
     [
+        (RequestStatus.DONE, "(this request was done)"),
         (RequestStatus.CANCELLED, "(this request was cancelled)"),
         (RequestStatus.REPLACED, "(this request was left unfinished: the person moved to another request)"),
     ],
 )
-def test_the_history_says_how_an_unfinished_request_ended(store, status, note):
+def test_the_history_says_how_each_request_ended(store, status, note):
     conversation = store.start_conversation("acme", "user1")
     finished_request(store, conversation, [("tomorrow doctor", "What time?")], status)
     finished_request(store, conversation, [("call mom", "Call Mom?"), ("yes", "Okay.")])
 
     assert History(store, MockSummarizer(50), 10, 400).for_brain(conversation) == (
-        f"person: tomorrow doctor\nalexa: What time?\n{note}\nperson: call mom\nalexa: Call Mom?\nperson: yes\nalexa: Okay."
+        f"person: tomorrow doctor\nalexa: What time?\n{note}\n"
+        "person: call mom\nalexa: Call Mom?\nperson: yes\nalexa: Okay.\n(this request was done)"
     )
 
 
