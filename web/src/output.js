@@ -1,15 +1,16 @@
 export function createOutput(voices, { onSpeakingChange }) {
   let muted = false;
   let queued = 0;
-  let current = 0;
+  let active = null;
   let last = Promise.resolve();
 
   async function say(text) {
-    while (current < voices.length) {
+    for (const voice of voices) {
+      active = voice;
       try {
-        return await voices[current].speak(text);
+        return await voice.speak(text);
       } catch {
-        current += 1;
+        active = null;
       }
     }
   }
@@ -32,7 +33,7 @@ export function createOutput(voices, { onSpeakingChange }) {
     },
     setMuted(value) {
       muted = value;
-      if (muted && queued > 0) voices[current].stop();
+      if (muted) active?.stop();
     },
     get muted() {
       return muted;

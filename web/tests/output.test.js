@@ -28,7 +28,7 @@ test("speaking starts with the first reply and ends after the last one", async (
   expect(changes).toEqual([true, false]);
 });
 
-test("the next voice takes over when the first cannot speak", async () => {
+test("the next voice takes over when the first cannot speak, and the first is tried again next time", async () => {
   const log = [];
   const browser = fakeVoice("browser", log);
   const { output } = setup(fakeVoice("polly", log, { fails: true }), browser);
@@ -38,7 +38,20 @@ test("the next voice takes over when the first cannot speak", async () => {
 
   browser.finish();
   output.speak("Mm-hm.");
-  await vi.waitFor(() => expect(log.at(-1)).toBe("browser: Mm-hm."));
+  await vi.waitFor(() => expect(log).toEqual(["polly: Done.", "browser: Done.", "polly: Mm-hm.", "browser: Mm-hm."]));
+});
+
+test("muting stops the voice that is speaking, whichever one took over", async () => {
+  const log = [];
+  const browser = fakeVoice("browser", log);
+  const { output } = setup(fakeVoice("polly", log, { fails: true }), browser);
+
+  output.speak("Done.");
+  await vi.waitFor(() => expect(log.at(-1)).toBe("browser: Done."));
+  output.setMuted(true);
+
+  await vi.waitFor(() => expect(output.speaking).toBe(false));
+  expect(log.at(-1)).toBe("browser: stop");
 });
 
 test("when no voice can speak the page carries on", async () => {
