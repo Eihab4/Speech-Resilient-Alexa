@@ -133,6 +133,14 @@ def test_never_mind_tells_the_agent_to_cancel_then_clears_the_request(server, db
     assert decision["next_move"] == NextMove.CANCEL
     assert cancelled == {"cancelled": True, "say": Reply.CANCELLED}
     assert inspect(db_path)[0] is None
+    assert request_row(db_path, decision["pending_id"]).intent == "reminder"
+
+
+def request_row(db_path, pending_id, user_id="user1"):
+    store = SqliteMemoryStore(db_path)
+    request = store.request(store.conversation_for("demo", user_id), pending_id)
+    store.close()
+    return request
 
 
 def test_cancel_with_nothing_pending_says_so(server):

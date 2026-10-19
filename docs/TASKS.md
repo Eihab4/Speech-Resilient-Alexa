@@ -17,7 +17,7 @@
 - [x] **Rana — Sign-in:** a username and password per person, so two people with the same name never share a memory; Alexa calls the person by the name on their account. Details: [feature-sign-in.md](branches/feature-sign-in.md).
 - [x] **Stability:** one lock on the shared SQLite connection, and the server waits for the history tidy-up before closing (both could crash it).
 - [x] **Eihab — Bug — the brain treats a finished request as open:** the history now says "(this request was done)" after a finished request, like it already did for cancelled and replaced ones.
-- [ ] **Bug — `cancel` saved as an intent:** when the person cancels, the request is saved with `intent = "cancel"`, which isn't a valid intent (only reminder, message, call).
+- [x] **Eihab — Bug — `cancel` saved as an intent:** a request can only hold a real intent (`Intent | None` on the model), and a cancel keeps the intent the request had.
 
 ## New tools
 

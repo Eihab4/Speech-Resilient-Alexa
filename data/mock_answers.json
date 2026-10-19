@@ -20,7 +20,6 @@
       "say": "Should I stop the doctor reminder and call Mom instead?"
     },
     "tomorrow never mind": {
-      "intent": "reminder",
       "next_move": "cancel",
       "say": "Okay, cancelled."
     },

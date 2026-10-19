@@ -173,7 +173,8 @@ def _interpret(now: Moment) -> Step:
             say=result.say,
         )
         return Step(request=now.request, result=switch, request_id=None, heard=now.fragment)
-    request = now.request.model_copy(update={"intent": result.intent, "details": result.details})
+    intent = result.intent or now.request.intent
+    request = now.request.model_copy(update={"intent": intent, "details": result.details})
     return Step(request=request, result=result, request_id=request.id, heard=now.fragment)
 
 

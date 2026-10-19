@@ -2,6 +2,7 @@ import sqlite3
 from concurrent.futures import ThreadPoolExecutor
 
 import pytest
+from pydantic import ValidationError
 
 from enums import NextMove, RequestStatus
 from memory import Helper, Profile, Request, SqliteMemoryStore, Turn
@@ -167,3 +168,9 @@ def test_many_threads_can_use_one_store_at_once(store):
         results = list(pool.map(visit, range(200)))
 
     assert all(results)
+
+
+def test_a_request_only_holds_a_real_intent():
+    assert Request(intent="reminder").intent == "reminder"
+    with pytest.raises(ValidationError):
+        Request(intent="cancel")
