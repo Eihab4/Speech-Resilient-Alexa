@@ -9,7 +9,7 @@ from websockets.asyncio.client import connect as ws_connect
 from websockets.exceptions import InvalidStatus
 
 from enums import TranscriptType
-from support import with_client
+from support import token_for, with_client
 
 
 def preflight(url: str, origin: str):
@@ -26,7 +26,7 @@ async def describe(client):
 def test_server_runs_on_configured_port_and_path(server):
     url = server(path="/speech", LLM_PROVIDER="bedrock")
 
-    version, tools = with_client(url, describe)
+    version, tools = with_client(url, describe, token_for(url))
 
     assert version >= "2025-11-25"
     assert "understand_speech" in tools

@@ -4,13 +4,13 @@ from brain.mock import MockAnswers
 from brain.schemas import BrainResult
 from config import Settings
 from enums import LlmProvider, NextMove
-from support import with_client
+from support import token_for, with_client
 
 NO_KEYS = {"LLM_PROVIDER": None, "OPENROUTER_API_KEY": None, "OPENROUTER": None}
 
 
 async def understand(client, heard):
-    result = await client.call_tool("understand_speech", {"user_id": "demo-user", "heard": heard})
+    result = await client.call_tool("understand_speech", {"heard": heard})
     return result.structured_content
 
 
@@ -23,7 +23,7 @@ def test_mock_provider_is_available_for_offline_tests(monkeypatch):
 def test_server_starts_without_any_key_and_answers_from_recordings(server):
     url = server(**NO_KEYS)
 
-    result = with_client(url, lambda client: understand(client, "tomorrow doctor ten"))
+    result = with_client(url, lambda client: understand(client, "tomorrow doctor ten"), token_for(url))
 
     assert result["intent"] == "reminder"
     assert result["next_move"] == NextMove.CONFIRM
@@ -33,7 +33,7 @@ def test_server_starts_without_any_key_and_answers_from_recordings(server):
 def test_unknown_speech_gets_the_fallback(server):
     url = server(**NO_KEYS)
 
-    result = with_client(url, lambda client: understand(client, "banana"))
+    result = with_client(url, lambda client: understand(client, "banana"), token_for(url))
 
     assert result["next_move"] == NextMove.ASK
     assert result["say"] == "What would you like me to do?"
@@ -60,6 +60,6 @@ def test_recordings_match_input_case_and_spacing(server, tmp_path):
     path.write_text(json.dumps(answers))
     url = server(MOCK_ANSWERS_PATH=str(path), **NO_KEYS)
 
-    result = with_client(url, lambda client: understand(client, "  Call MOM "))
+    result = with_client(url, lambda client: understand(client, "  Call MOM "), token_for(url))
 
     assert result["say"] == "Call Mom?"

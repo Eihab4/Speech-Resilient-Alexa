@@ -3,6 +3,7 @@ from threading import Event, Thread
 
 import uvicorn
 from fastmcp import Context, FastMCP
+from fastmcp.server.dependencies import get_access_token
 from fastmcp.server.lifespan import lifespan
 from starlette.middleware import Middleware
 from starlette.middleware.cors import CORSMiddleware
@@ -14,7 +15,7 @@ from location import create_geocoder
 from memory import History, SqliteMemoryStore
 from messages import ToolDescription
 from notify import HelperLinker, create_bot, create_notifier
-from people import Sessions, create_people_routes
+from people import Sessions, SessionVerifier, create_people_routes
 from speech import PollySynthesizer, create_speak_endpoint
 from tools.cancel_request import cancel_request as cancel
 from tools.do_confirmed_request import do_confirmed_request as do_confirmed
@@ -29,6 +30,10 @@ bot = create_bot(settings)
 
 def open_store() -> SqliteMemoryStore:
     return SqliteMemoryStore(settings.memory.db_path, settings.memory.unfinished_ttl_hours)
+
+
+people = open_store()
+sessions = Sessions(people, settings.memory.company_id, settings.session.ttl_hours)
 
 
 @lifespan
@@ -55,7 +60,12 @@ async def resources(server: FastMCP):
     store.close()
 
 
-mcp = FastMCP(settings.server.name, lifespan=resources)
+mcp = FastMCP(settings.server.name, lifespan=resources, auth=SessionVerifier(sessions))
+
+
+def caller() -> str:
+    return get_access_token().subject
+
 
 # Lets the browser frontend in web/ call /mcp directly. Pages on localhost are always allowed, on any
 # port, matching FastMCP's own trust of loopback origins; MCP_CORS_ORIGINS adds any others.
@@ -78,33 +88,46 @@ def is_allowed_origin(origin: str | None) -> bool:
 
 
 @mcp.tool(description=ToolDescription.UNDERSTAND_SPEECH)
-def understand_speech(user_id: str, heard: str, ctx: Context) -> dict:
+def understand_speech(heard: str, ctx: Context) -> dict:
     r = ctx.lifespan_context
     return understand(
-        r["brain"], r["store"], r["history"], settings.memory.company_id, user_id, heard, settings.sos.countdown_seconds
+        r["brain"],
+        r["store"],
+        r["history"],
+        settings.memory.company_id,
+        caller(),
+        heard,
+        settings.sos.countdown_seconds,
     )
 
 
 @mcp.tool(description=ToolDescription.DO_CONFIRMED_REQUEST)
-def do_confirmed_request(user_id: str, pending_id: str, ctx: Context) -> dict:
-    return do_confirmed(ctx.lifespan_context["store"], settings.memory.company_id, user_id, pending_id)
+def do_confirmed_request(pending_id: str, ctx: Context) -> dict:
+    return do_confirmed(ctx.lifespan_context["store"], settings.memory.company_id, caller(), pending_id)
 
 
 @mcp.tool(description=ToolDescription.RESUME_UNFINISHED)
-def resume_unfinished(user_id: str, ctx: Context) -> dict:
-    return resume(ctx.lifespan_context["store"], settings.memory.company_id, user_id)
+def resume_unfinished(ctx: Context) -> dict:
+    return resume(ctx.lifespan_context["store"], settings.memory.company_id, caller())
 
 
 @mcp.tool(description=ToolDescription.CANCEL_REQUEST)
-def cancel_request(user_id: str, ctx: Context) -> dict:
-    return cancel(ctx.lifespan_context["store"], settings.memory.company_id, user_id)
+def cancel_request(ctx: Context) -> dict:
+    return cancel(ctx.lifespan_context["store"], settings.memory.company_id, caller())
 
 
 @mcp.tool(description=ToolDescription.EMERGENCY_SOS)
-def emergency_sos(user_id: str, ctx: Context, latitude: float | None = None, longitude: float | None = None) -> dict:
+def emergency_sos(ctx: Context, latitude: float | None = None, longitude: float | None = None) -> dict:
     r = ctx.lifespan_context
     return send_sos(
-        r["store"], r["notifier"], r["geocoder"], settings.sos, settings.memory.company_id, user_id, latitude, longitude
+        r["store"],
+        r["notifier"],
+        r["geocoder"],
+        settings.sos,
+        settings.memory.company_id,
+        caller(),
+        latitude,
+        longitude,
     )
 
 
@@ -116,8 +139,6 @@ def create_app():
     app.router.routes.append(WebSocketRoute(settings.transcribe.path, transcribe))
     speak = create_speak_endpoint(PollySynthesizer(settings.polly))
     app.router.routes.append(Route(settings.polly.path, speak, methods=["POST"]))
-    people = open_store()
-    sessions = Sessions(people, settings.memory.company_id, settings.session.ttl_hours)
     app.router.routes.extend(create_people_routes(people, sessions, bot, settings.memory.company_id))
     return app
 

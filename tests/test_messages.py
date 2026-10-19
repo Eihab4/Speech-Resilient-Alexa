@@ -8,7 +8,7 @@ from brain.llm import GroqClient, OpenRouterClient
 from config import Settings
 from enums import Intent, NextMove
 from messages import ACTION_RESULTS, ErrorMessage, Prompt, Reply
-from support import needs_real_llm, with_client
+from support import needs_real_llm, token_for, with_client
 
 
 @pytest.mark.parametrize("prompt", list(Prompt))
@@ -46,10 +46,10 @@ def test_blank_speech_gets_the_central_reply_over_mcp(server):
     url = server(LLM_PROVIDER="bedrock")
 
     async def call(client):
-        result = await client.call_tool("understand_speech", {"user_id": "demo-user", "heard": "   "})
+        result = await client.call_tool("understand_speech", {"heard": "   "})
         return result.structured_content
 
-    result = with_client(url, call)
+    result = with_client(url, call, token_for(url))
 
     assert result["next_move"] == NextMove.LISTEN
     assert result["say"] == Reply.STILL_LISTENING

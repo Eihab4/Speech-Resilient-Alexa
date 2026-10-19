@@ -7,7 +7,7 @@ from urllib.request import Request, urlopen
 import pytest
 
 from messages import ErrorMessage, Reply, TelegramText
-from support import base_url, http, sign_up, with_client
+from support import base_url, http, sign_up, token_for, with_client
 
 CAIRO = {"latitude": 30.0444, "longitude": 31.2357}
 BOT = "sra_test_bot"
@@ -83,11 +83,11 @@ def wait_for(check, timeout=10):
     raise AssertionError("timed out")
 
 
-def call(url, tool, **arguments):
+def call(url, tool, user_id="user1", **arguments):
     async def run(client):
         return (await client.call_tool(tool, arguments)).structured_content
 
-    return with_client(url, run)
+    return with_client(url, run, token_for(url, user_id))
 
 
 def open_link(telegram, helper, chat_id=555, update_id=1):
