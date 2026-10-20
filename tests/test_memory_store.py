@@ -2,6 +2,7 @@ import sqlite3
 from concurrent.futures import ThreadPoolExecutor
 
 import pytest
+from pydantic import ValidationError
 
 from enums import NextMove, RequestStatus
 from memory import Helper, Profile, Request, SqliteMemoryStore, Turn
@@ -167,3 +168,25 @@ def test_many_threads_can_use_one_store_at_once(store):
         results = list(pool.map(visit, range(200)))
 
     assert all(results)
+
+
+def test_a_request_only_holds_a_real_intent():
+    assert Request(intent="reminder").intent == "reminder"
+    with pytest.raises(ValidationError):
+        Request(intent="cancel")
+
+
+def test_requests_saved_with_a_made_up_intent_are_repaired(tmp_path):
+    db_path = tmp_path / "memory.db"
+    store = SqliteMemoryStore(db_path)
+    conversation = store.start_conversation("demo", "user1")
+    store.save_request(conversation, Request(intent="reminder"))
+    store._db.execute("UPDATE requests SET intent = 'cancel'")
+    store.close()
+
+    store = SqliteMemoryStore(db_path)
+    pending = store.pending_request(conversation)
+    store.close()
+
+    assert pending is not None
+    assert pending.intent is None

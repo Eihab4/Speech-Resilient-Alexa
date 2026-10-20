@@ -63,6 +63,19 @@ test("a server that cannot be reached makes the voice fail too", async () => {
   await expect(voice.speak("Done.")).rejects.toThrow("Failed to fetch");
 });
 
+test("stopping while the audio is still being fetched means it never plays", async () => {
+  let deliver;
+  respond = () => new Promise((resolve) => (deliver = resolve));
+  const done = voice.speak("Should I set it?");
+  await vi.waitFor(() => expect(deliver).toBeDefined());
+
+  voice.stop();
+  deliver(new Response(new Blob([new Uint8Array([1])], { type: "audio/mpeg" })));
+
+  await expect(done).resolves.toBeUndefined();
+  expect(players).toEqual([]);
+});
+
 test("stopping pauses the audio and ends the reply", async () => {
   const done = voice.speak("Should I set it?");
   await vi.waitFor(() => expect(players).toHaveLength(1));

@@ -5,7 +5,7 @@ from functools import wraps
 from pathlib import Path
 from threading import RLock
 
-from enums import AlertStatus, RequestStatus
+from enums import AlertStatus, Intent, RequestStatus
 from memory.models import Action, Alert, Helper, Profile, Request, Summary, Turn
 from utils import hours_ago, utc_now
 
@@ -45,12 +45,14 @@ class SqliteMemoryStore:
         self._db.execute("PRAGMA journal_mode=WAL")
         self._db.execute("PRAGMA foreign_keys=ON")
         self._db.executescript(SCHEMA)
-        self._add_missing_columns()
+        self._repair_older_files()
 
-    def _add_missing_columns(self) -> None:
+    def _repair_older_files(self) -> None:
         columns = {row["name"] for row in self._db.execute("PRAGMA table_info(sessions)")}
         if "expires_at" not in columns:
             self._db.execute("ALTER TABLE sessions ADD COLUMN expires_at TEXT NOT NULL DEFAULT ''")
+        placeholders = ", ".join("?" * len(Intent))
+        self._db.execute(f"UPDATE requests SET intent = NULL WHERE intent NOT IN ({placeholders})", list(Intent))
 
     @contextmanager
     def _transaction(self):

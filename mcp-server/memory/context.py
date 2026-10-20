@@ -3,7 +3,6 @@ from messages import REQUEST_ENDINGS
 
 
 def render_turns(summary: str, turns: list[Turn]) -> str:
-    """The turns of finished requests, with a note after each one that ended without being done."""
     lines = []
     for index, turn in enumerate(turns):
         lines.append(f"person: {turn.heard}\nalexa: {turn.say}")

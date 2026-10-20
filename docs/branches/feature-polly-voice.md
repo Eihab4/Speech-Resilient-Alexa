@@ -36,7 +36,7 @@ cd web && npm test
 
 ## Decisions made on this branch
 
-- **Same fallback shape as the microphone.** Polly first, browser second, and the page never shows an error for it. Once Polly fails, the browser voice stays on for the session.
+- **Same fallback shape as the microphone.** Polly first, browser second, and the page never shows an error for it. Polly is tried again on every reply, so a short outage costs one reply, not the session.
 - **A voice is tiny.** `speak(text)` resolves when done, rejects when it couldn't start; `stop()` cuts it. Everything else lives in `output.js`, once.
 - **Server-side synthesis.** Keeps the AWS keys off the page and lets any other client reuse `/speak`.
 - **Audio is streamed, not stored.** Each reply is one object URL, revoked right after it plays.
