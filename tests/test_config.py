@@ -73,6 +73,7 @@ def test_env_example_lists_every_setting():
         "memory": "MEMORY_",
         "sos": "SOS_",
         "yes_no": "YES_NO_",
+        "trend": "TREND_",
         "pause": "PAUSE_",
         "telegram": "TELEGRAM_",
         "location": "LOCATION_",

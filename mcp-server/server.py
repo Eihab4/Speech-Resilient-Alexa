@@ -22,6 +22,7 @@ from tools.cancel_request import cancel_request as cancel
 from tools.do_confirmed_request import do_confirmed_request as do_confirmed
 from tools.emergency_sos import emergency_sos as send_sos
 from tools.resume_unfinished import resume_unfinished as resume
+from tools.speech_trend import speech_trend as trend
 from tools.understand_speech import understand
 from transcription import create_transcribe_endpoint
 
@@ -120,6 +121,11 @@ def resume_unfinished(ctx: Context) -> dict:
 @mcp.tool(description=ToolDescription.CANCEL_REQUEST)
 def cancel_request(ctx: Context) -> dict:
     return cancel(ctx.lifespan_context["store"], settings.memory.company_id, caller())
+
+
+@mcp.tool(description=ToolDescription.SPEECH_TREND)
+def speech_trend(ctx: Context) -> dict:
+    return trend(ctx.lifespan_context["store"], settings.memory.company_id, caller(), settings.trend.days)
 
 
 @mcp.tool(description=ToolDescription.EMERGENCY_SOS)

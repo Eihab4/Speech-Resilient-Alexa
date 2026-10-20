@@ -6,6 +6,7 @@ export const Tool = Object.freeze({
   CANCEL_REQUEST: "cancel_request",
   RESUME_UNFINISHED: "resume_unfinished",
   EMERGENCY_SOS: "emergency_sos",
+  SPEECH_TREND: "speech_trend",
 });
 
 export const NextMove = Object.freeze({
