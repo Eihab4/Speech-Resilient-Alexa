@@ -1,5 +1,4 @@
 import re
-from datetime import datetime
 
 from config.settings import SosSettings
 from enums import AlertKind, AlertStatus, NextMove
@@ -7,7 +6,7 @@ from location import Geocoder
 from memory import Alert, MemoryStore, Profile, Turn
 from messages import MAP_URL, SOS_PHRASES, STOP_WORDS, AlertText, Reply
 from notify import Notifier, Position, linked_helpers, names, outcome, reach
-from utils import hours_ago
+from utils import clock_now, hours_ago
 
 SOS_PATTERN = re.compile(r"\b(" + "|".join(map(re.escape, SOS_PHRASES)) + r")\b")
 
@@ -77,7 +76,7 @@ def alert_text(profile: Profile, heard: str, position: Position | None, address:
     else:
         where = [AlertText.NO_PLACE]
     said = AlertText.SAID.format(heard=heard) if heard else ""
-    time = AlertText.TIME.format(time=datetime.now().astimezone().strftime("%H:%M"))
+    time = AlertText.TIME.format(time=clock_now())
     return "\n".join(filter(None, [AlertText.HEADER.format(name=profile.name), said, *where, time]))
 
 

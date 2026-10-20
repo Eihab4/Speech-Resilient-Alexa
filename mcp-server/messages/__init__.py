@@ -1,4 +1,4 @@
-from messages.alerts import MAP_URL, TELEGRAM_LINK, AlertText, TelegramText
+from messages.alerts import MAP_URL, TELEGRAM_LINK, AlertText, HelpText, TelegramText
 from messages.errors import ErrorMessage
 from messages.logs import LogMessage
 from messages.prompts import REQUEST_ENDINGS, Prompt
@@ -19,6 +19,7 @@ __all__ = [
     "YES_WORDS",
     "AlertText",
     "ErrorMessage",
+    "HelpText",
     "LogMessage",
     "Prompt",
     "Reply",

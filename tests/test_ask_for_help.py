@@ -3,11 +3,13 @@ import pytest
 from brain.schemas import BrainResult
 from brain.summarizer import MockSummarizer
 from config.settings import PauseSettings
-from enums import AskMode, NextMove, RequestStatus
-from memory import History, SqliteMemoryStore
+from enums import AlertKind, AlertStatus, AskMode, NextMove, RequestStatus
+from memory import Helper, History, SqliteMemoryStore
 from messages import Reply
 from pacing import Pacing
-from tools.ask_for_help import asks_for_help
+from test_emergency_sos import CAIRO, call, set_up
+from test_notify_helpers import FailingNotifier
+from tools.ask_for_help import ask_for_help, asks_for_help
 from tools.understand_speech import understand
 
 pytestmark = pytest.mark.usefixtures("history_in_line")
@@ -97,3 +99,73 @@ def test_after_too_many_questions_alexa_asks_the_helper_once(store):
     assert [reply["tries"] for reply in replies] == [1, 2, 3, 4, 5]
     assert [turn.next_move for turn in turns][2] == NextMove.HELP
     assert turns[2].say == "Question 3?"
+
+
+def say(url, heard):
+    return call(url, "understand_speech", heard=heard)
+
+
+def test_the_helper_gets_what_was_understood_and_alexa_repeats_her_question(server, store):
+    url = server()
+    set_up(store, Helper(name="Sara", telegram_chat_id="1"), url=url)
+    question = say(url, "tomorrow")
+    assert say(url, "help")["next_move"] == NextMove.HELP
+
+    result = call(url, "ask_for_help")
+    [alert] = store.alerts("demo", "user1")
+
+    assert result == {
+        "sent": True,
+        "sent_to": ["Sara"],
+        "say": f"{Reply.HELP_SENT.format(who='Sara')} {question['say']}",
+    }
+    assert alert.kind == AlertKind.HELP
+    assert alert.status == AlertStatus.SENT
+    assert alert.text.startswith(
+        'Ahmed asked Alexa for help.\nUnderstood so far: reminder, when: tomorrow.\nThey said: "tomorrow".'
+    )
+    assert say(url, "doctor ten")["next_move"] == NextMove.CONFIRM
+
+
+def test_when_alexa_gives_up_the_helper_is_told_how_many_questions_it_took(server, store):
+    url = server(HELP_AFTER_TRIES="2")
+    set_up(store, Helper(name="Sara", telegram_chat_id="1"), url=url)
+    say(url, "blah")
+    stuck = say(url, "blah")
+
+    result = call(url, "ask_for_help")
+    [alert] = store.alerts("demo", "user1")
+
+    assert stuck["next_move"] == NextMove.HELP
+    assert result["say"] == f"{Reply.HELP_SENT.format(who='Sara')} What would you like me to do?"
+    assert alert.text.startswith(
+        'Alexa couldn\'t understand Ahmed after 2 questions.\nNothing was understood yet.\nThey said: "blah … blah".'
+    )
+
+
+def test_a_help_message_does_not_delay_a_later_emergency_alert(server, store):
+    url = server()
+    set_up(store, Helper(name="Sara", telegram_chat_id="1"), url=url)
+    say(url, "help")
+    call(url, "ask_for_help")
+    say(url, "I fell")
+
+    assert call(url, "emergency_sos", **CAIRO)["sent"] is True
+
+
+def test_without_a_linked_helper_alexa_says_so_and_stays(store):
+    store.start_conversation("demo", "user1")
+
+    result = ask_for_help(store, FailingNotifier(set()), "demo", "user1")
+
+    assert result == {"sent": False, "sent_to": [], "say": f"{Reply.HELP_NO_HELPER} {Reply.HELP_HERE}"}
+    assert store.alerts("demo", "user1")[0].status == AlertStatus.NO_HELPER
+
+
+def test_when_no_helper_can_be_reached_alexa_says_so(store):
+    store.start_conversation("demo", "user1")
+    store.add_helper("demo", "user1", Helper(name="Sara", telegram_chat_id="1"))
+
+    result = ask_for_help(store, FailingNotifier({"Sara"}), "demo", "user1")
+
+    assert result["say"] == f"{Reply.HELP_FAILED} {Reply.HELP_HERE}"
