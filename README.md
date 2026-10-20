@@ -164,6 +164,7 @@ Everything is read from environment variables. `.env.example` lists every settin
 | `PAUSE_START_SECONDS`, `PAUSE_MIN_SECONDS`, `PAUSE_MAX_SECONDS` | How long Alexa waits for a new person, and the limits of what she learns |
 | `YES_NO_AFTER_TRIES`           | After this many questions about one request, Alexa guesses and asks yes or no instead |
 | `TREND_DAYS`                   | How many days `speech_trend` looks back                               |
+| `HELP_AFTER_TRIES`             | After this many questions about one request, Alexa sends the helper what she understood so far |
 | `TELEGRAM_BOT_TOKEN`           | The bot that delivers emergency alerts; empty writes them to the log  |
 | `LOCATION_ENABLED`             | Whether Amazon Location adds an address to emergency alerts           |
 

@@ -105,6 +105,7 @@ def understand_speech(heard: str, ctx: Context, pauses_ms: list[int] | None = No
         r["pacing"],
         pauses_ms,
         settings.yes_no.after_tries,
+        settings.help.after_tries,
     )
 
 

@@ -19,6 +19,7 @@ class Reply(StrEnum):
     SOS_STOPPED = "Okay, I won't send it. I'm here if you need me."
     SOS_STOPPED_BACK = "Okay, I won't send it. {question}"
     HELP_ASKED = "Okay, I'll ask your helper."
+    HELP_STUCK = "I'm still not sure, so I'll ask your helper."
     TREND_EMPTY = "We haven't finished a request together yet."
     TREND_ONE_DAY = "I needed {tries} questions per request today."
     TREND = "On {first_day} I needed {first_tries} questions per request. Now it's {last_tries}."

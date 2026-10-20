@@ -6,7 +6,7 @@ from enums import AskMode, NextMove, RequestStatus
 from memory import History, MemoryStore, Request, Turn
 from messages import NO_WORDS, YES_WORDS, Reply
 from pacing import Pacing
-from tools.ask_for_help import asks_for_help
+from tools.ask_for_help import TRIES, asks_for_help
 from tools.emergency_sos import asks_for_sos, says_stop
 
 
@@ -54,6 +54,7 @@ def understand(
     pacing: Pacing,
     pauses_ms: list[int] | None = None,
     yes_no_after_tries: int = 3,
+    help_after_tries: int = 5,
 ) -> dict:
     """pauses_ms: the pauses the host measured inside this piece, between the bits it joined together."""
     fragment = heard.strip()
@@ -74,7 +75,7 @@ def understand(
         request=request,
         earlier=earlier,
         person=profile.name if profile else "",
-        tries=sum(turn.next_move == NextMove.ASK for turn in earlier),
+        tries=sum(turn.next_move in TRIES for turn in earlier),
         question=earlier[-1].say if earlier else "",
         mode=AskMode.OPEN,
     )
@@ -87,17 +88,21 @@ def understand(
         return {**_ask_for_help(now), "wait_seconds": pacing.wait(company_id, user_id)}
 
     step = _decide(now)
+    gives_up = step.result.next_move == NextMove.ASK and now.tries + 1 == help_after_tries
+    move = NextMove.HELP if gives_up else step.result.next_move
     store.save_request(conversation, step.request)
-    turn = Turn(request_id=step.request_id, heard=step.heard, say=step.result.say, next_move=step.result.next_move)
-    store.add_turn(conversation, turn)
+    store.add_turn(
+        conversation, Turn(request_id=step.request_id, heard=step.heard, say=step.result.say, next_move=move)
+    )
     history.maintain_later(conversation)
     # Alexa said "go on" and the person went on with the same request: she answered before they had finished.
     answered_too_early = (
         now.last is not None and now.last.next_move == NextMove.LISTEN and now.last.request_id == step.request_id
     )
     wait = pacing.learn(company_id, user_id, pauses_ms or [], answered_too_early)
-    tries = now.tries + (step.result.next_move == NextMove.ASK)
-    return {**step.result.model_dump(), "pending_id": step.request.id, "wait_seconds": wait, "tries": tries}
+    tries = now.tries + (move in TRIES)
+    reply = {**step.result.model_dump(), "next_move": move, "say": Reply.HELP_STUCK if gives_up else step.result.say}
+    return {**reply, "pending_id": step.request.id, "wait_seconds": wait, "tries": tries}
 
 
 def _emergency(now: Moment, countdown_seconds: int) -> dict | None:

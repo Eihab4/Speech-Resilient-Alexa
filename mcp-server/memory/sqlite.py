@@ -181,11 +181,11 @@ class SqliteMemoryStore:
     def tries_per_day(self, conversation_id: int, days: int) -> list[DayTries]:
         rows = self._db.execute(
             "SELECT day, COUNT(*) AS requests, ROUND(AVG(asks), 1) AS tries FROM ("
-            "  SELECT substr(MIN(t.created_at), 1, 10) AS day, SUM(t.next_move = ?) AS asks"
+            "  SELECT substr(MIN(t.created_at), 1, 10) AS day, SUM(t.next_move IN (?, ?)) AS asks"
             "  FROM turns t JOIN requests r ON r.id = t.request_id"
             "  WHERE t.conversation_id = ? AND r.status = ? GROUP BY t.request_id"
             ") GROUP BY day ORDER BY day DESC LIMIT ?",
-            (NextMove.ASK, conversation_id, RequestStatus.DONE, days),
+            (NextMove.ASK, NextMove.HELP, conversation_id, RequestStatus.DONE, days),
         ).fetchall()
         return [DayTries(**row) for row in reversed(rows)]
 

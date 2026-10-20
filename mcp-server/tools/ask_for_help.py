@@ -1,5 +1,8 @@
+from enums import NextMove
 from messages import HELP_WORDS
 from tools.emergency_sos import plain_words
+
+TRIES = (NextMove.ASK, NextMove.HELP)
 
 
 def asks_for_help(heard: str) -> bool:

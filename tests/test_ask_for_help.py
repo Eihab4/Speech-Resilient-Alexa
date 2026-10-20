@@ -30,11 +30,23 @@ class ScriptedBrain:
         return self.answers.pop(0)
 
 
-def hear(store, brain, heard):
+def hear(store, brain, heard, help_after_tries=5):
     history = History(store, MockSummarizer(400), recent_messages=10, summary_trigger_words=400)
     return understand(
-        brain, store, history, "demo", "user1", heard, countdown_seconds=5, pacing=Pacing(store, PauseSettings())
+        brain,
+        store,
+        history,
+        "demo",
+        "user1",
+        heard,
+        countdown_seconds=5,
+        pacing=Pacing(store, PauseSettings()),
+        help_after_tries=help_after_tries,
     )
+
+
+def ask(question):
+    return BrainResult(intent="call", next_move=NextMove.ASK, say=question)
 
 
 @pytest.mark.parametrize("heard", ["help", "Help!", "help me", "I need help.", "get help"])
@@ -71,3 +83,17 @@ def test_help_with_nothing_open_belongs_to_no_request(store):
 
     assert result["next_move"] == NextMove.HELP
     assert result["pending_id"] is None
+
+
+def test_after_too_many_questions_alexa_asks_the_helper_once(store):
+    brain = ScriptedBrain(*(ask(f"Question {n}?") for n in range(1, 6)))
+
+    replies = [hear(store, brain, piece, help_after_tries=3) for piece in ["c", "cuh", "k", "ca", "caw"]]
+    conversation = store.conversation_for("demo", "user1")
+    turns = store.turns(conversation, replies[0]["pending_id"])
+
+    assert [reply["next_move"] for reply in replies] == [NextMove.ASK] * 2 + [NextMove.HELP] + [NextMove.ASK] * 2
+    assert replies[2]["say"] == Reply.HELP_STUCK
+    assert [reply["tries"] for reply in replies] == [1, 2, 3, 4, 5]
+    assert [turn.next_move for turn in turns][2] == NextMove.HELP
+    assert turns[2].say == "Question 3?"
