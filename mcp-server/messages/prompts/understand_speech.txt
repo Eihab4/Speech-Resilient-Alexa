@@ -19,4 +19,5 @@ The last fragment is the newest. Decide whether it continues the open request, c
 - It starts a new request when it asks for something that does not fit the open one, such as "call mom" while a reminder is being set.
 Set new_request to true only for a new request, and only when the earlier fragments already had a clear intent.
 When new_request is true, keep intent and details as the earlier fragments gave them, choose ask, and say one short question naming both, such as "Should I stop the doctor reminder and call Mom instead?". A yes to it drops the open request, so the question must say that plainly.
+When "mode" is "yes_no", the person has struggled to say the missing detail several times. Do not ask them to repeat it. Make your best guess for the one missing detail from the fragments, the history and this person's usual requests, put the guess in details, and ask it as one short yes/no question, such as "Mom?" or "Do you want to call someone?". If the newest fragment is a no to such a guess, drop it and offer the next most likely one.
 Return only JSON matching the supplied schema.

@@ -2,6 +2,7 @@ from pydantic import BaseModel
 
 from brain.schemas import BrainResult
 from config import Settings, get_settings
+from enums import AskMode
 
 
 class MockAnswers(BaseModel):
@@ -14,6 +15,14 @@ class MockBrain:
         config = settings or get_settings()
         self._recorded = MockAnswers.model_validate_json(config.mock.answers_path.read_text())
 
-    def interpret(self, fragments: list[str], history: str = "", person: str = "", question: str = "") -> BrainResult:
+    def interpret(
+        self,
+        fragments: list[str],
+        history: str = "",
+        person: str = "",
+        question: str = "",
+        mode: AskMode = AskMode.OPEN,
+    ) -> BrainResult:
         key = " ".join(fragment.lower().strip() for fragment in fragments)
-        return self._recorded.answers.get(key, self._recorded.fallback)
+        answers = self._recorded.answers
+        return answers.get(f"{key} [{mode}]", answers.get(key, self._recorded.fallback))

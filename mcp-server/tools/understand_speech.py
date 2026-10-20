@@ -2,7 +2,7 @@ from dataclasses import dataclass
 
 from brain.base import Brain
 from brain.schemas import BrainResult
-from enums import NextMove, RequestStatus
+from enums import AskMode, NextMove, RequestStatus
 from memory import History, MemoryStore, Request, Turn
 from messages import NO_WORDS, YES_WORDS, Reply
 from pacing import Pacing
@@ -24,9 +24,12 @@ class Moment:
     person: str  # the name the person signed in with, for the brain to use
     tries: int  # how many times Alexa has already asked about this request
     question: str  # what Alexa last said about this request, so "mom" or "yes" can be read as an answer
+    mode: AskMode  # yes_no once asking has failed a few times: the brain guesses and asks "Mom?"
 
     def ask_brain(self, pieces: list[str]) -> BrainResult:
-        return self.brain.interpret(pieces, self.history.for_brain(self.conversation), self.person, self.question)
+        return self.brain.interpret(
+            pieces, self.history.for_brain(self.conversation), self.person, self.question, self.mode
+        )
 
 
 @dataclass
@@ -49,6 +52,7 @@ def understand(
     countdown_seconds: int,
     pacing: Pacing,
     pauses_ms: list[int] | None = None,
+    yes_no_after_tries: int = 3,
 ) -> dict:
     """pauses_ms: the pauses the host measured inside this piece, between the bits it joined together."""
     fragment = heard.strip()
@@ -71,7 +75,9 @@ def understand(
         person=profile.name if profile else "",
         tries=sum(turn.next_move == NextMove.ASK for turn in earlier),
         question=earlier[-1].say if earlier else "",
+        mode=AskMode.OPEN,
     )
+    now.mode = AskMode.YES_NO if now.tries >= yes_no_after_tries else AskMode.OPEN
 
     # Checked before the brain, so an emergency is caught even when the LLM is down or slow.
     if (emergency := _emergency(now, countdown_seconds)) is not None:

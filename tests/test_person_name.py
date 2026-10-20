@@ -25,7 +25,7 @@ class RecordingBrain:
     def __init__(self):
         self.people = []
 
-    def interpret(self, fragments, history="", person="", question=""):
+    def interpret(self, fragments, history="", person="", question="", mode=None):
         self.people.append(person)
         return BrainResult(next_move=NextMove.LISTEN, say="Mm-hm.")
 

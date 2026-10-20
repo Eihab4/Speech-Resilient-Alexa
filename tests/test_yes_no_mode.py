@@ -4,10 +4,10 @@ from brain.interpreter import LlmBrain
 from brain.schemas import BrainResult
 from brain.summarizer import MockSummarizer
 from config.settings import PauseSettings
-from enums import NextMove
+from enums import AskMode, NextMove
 from memory import History, SqliteMemoryStore
 from pacing import Pacing
-from support import CapturingClient
+from support import CapturingClient, token_for, with_client
 from tools.do_confirmed_request import do_confirmed_request
 from tools.understand_speech import understand
 
@@ -25,9 +25,11 @@ class ScriptedBrain:
     def __init__(self, *answers):
         self.answers = list(answers)
         self.calls = []
+        self.modes = []
 
-    def interpret(self, fragments, history="", person="", question=""):
+    def interpret(self, fragments, history="", person="", question="", mode=AskMode.OPEN):
         self.calls.append((fragments, question))
+        self.modes.append(mode)
         return self.answers.pop(0)
 
 
@@ -74,6 +76,67 @@ def test_the_question_reaches_the_model(store):
 
     assert client.user["question"] == ""
     assert "question" in client.system
+
+
+def test_after_a_few_failed_asks_the_brain_is_told_to_guess_yes_or_no(store):
+    brain = ScriptedBrain(ask("Who?"), ask("Who?"), ask("Who?"), ask("Mom?"), ask("Sara?"))
+
+    for heard in ["call", "c", "cuh", "k", "no"]:
+        hear(store, brain, heard)
+
+    assert brain.modes == [AskMode.OPEN, AskMode.OPEN, AskMode.OPEN, AskMode.YES_NO, AskMode.YES_NO]
+
+
+def test_the_threshold_is_a_setting(store):
+    brain = ScriptedBrain(ask("Who?"), ask("Mom?"))
+
+    hear(store, brain, "call")
+    understand(
+        brain,
+        store,
+        History(store, MockSummarizer(400), 10, 400),
+        "demo",
+        "user1",
+        "c",
+        5,
+        Pacing(store, PauseSettings()),
+        yes_no_after_tries=1,
+    )
+
+    assert brain.modes == [AskMode.OPEN, AskMode.YES_NO]
+
+
+def test_the_mode_reaches_the_model(store):
+    client = CapturingClient()
+
+    hear(store, LlmBrain(client), "call")
+
+    assert client.user["mode"] == AskMode.OPEN
+    assert "yes_no" in client.system
+
+
+def say(url, heard):
+    async def run(client):
+        return (await client.call_tool("understand_speech", {"heard": heard})).structured_content
+
+    return with_client(url, run, token_for(url))
+
+
+def test_over_mcp_alexa_guesses_and_a_yes_confirms_it(server):
+    url = server()
+
+    replies = [say(url, heard) for heard in ["call", "c", "cuh", "k", "yes", "yes"]]
+
+    assert [reply["say"] for reply in replies[:4]] == [
+        "Who do you want to call?",
+        "Say the name once more?",
+        "I didn't catch it. Who?",
+        "Mom?",
+    ]
+    assert [reply["tries"] for reply in replies[:4]] == [1, 2, 3, 4]
+    assert replies[4]["next_move"] == NextMove.CONFIRM
+    assert replies[5]["next_move"] == NextMove.DONE
+    assert replies[5]["details"] == {"who": "mom"}
 
 
 def test_a_new_request_starts_counting_again(store):

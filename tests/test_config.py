@@ -72,6 +72,7 @@ def test_env_example_lists_every_setting():
         "llm": "LLM_",
         "memory": "MEMORY_",
         "sos": "SOS_",
+        "yes_no": "YES_NO_",
         "pause": "PAUSE_",
         "telegram": "TELEGRAM_",
         "location": "LOCATION_",

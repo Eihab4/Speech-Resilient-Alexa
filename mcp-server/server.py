@@ -103,6 +103,7 @@ def understand_speech(heard: str, ctx: Context, pauses_ms: list[int] | None = No
         settings.sos.countdown_seconds,
         r["pacing"],
         pauses_ms,
+        settings.yes_no.after_tries,
     )
 
 
