@@ -3,7 +3,7 @@ import pytest
 from enums import NextMove, RequestStatus
 from memory import SqliteMemoryStore
 from messages import Reply
-from support import with_client
+from support import token_for, with_client
 
 SWITCH_QUESTION = "Should I stop the doctor reminder and call Mom instead?"
 REMINDER_QUESTION = "Should I set a reminder for your doctor appointment tomorrow at 10 AM?"
@@ -14,15 +14,15 @@ def db_path(tmp_path):
     return tmp_path / "memory.db"
 
 
-def call(url, tool, **arguments):
+def call(url, tool, user_id="user1", **arguments):
     async def run(client):
         return (await client.call_tool(tool, arguments)).structured_content
 
-    return with_client(url, run)
+    return with_client(url, run, token_for(url, user_id))
 
 
 def say(url, heard):
-    return call(url, "understand_speech", user_id="u1", heard=heard)
+    return call(url, "understand_speech", user_id="user1", heard=heard)
 
 
 def call_mom_during_a_reminder(url):
@@ -33,7 +33,7 @@ def call_mom_during_a_reminder(url):
 
 def inspect(db_path, request_id):
     store = SqliteMemoryStore(db_path)
-    conversation = store.conversation_for("demo", "u1")
+    conversation = store.conversation_for("demo", "user1")
     request, pieces = store.request(conversation, request_id), store.turns(conversation, request_id)
     store.close()
     return request, [turn.heard for turn in pieces]
@@ -84,7 +84,7 @@ def test_the_new_request_can_then_be_carried_out(server):
     say(url, "yes")
 
     confirmed = say(url, "yes")
-    done = call(url, "do_confirmed_request", user_id="u1", pending_id=confirmed["pending_id"])
+    done = call(url, "do_confirmed_request", user_id="user1", pending_id=confirmed["pending_id"])
 
     assert done == {"done": True, "say": "Done. Calling mom."}
 
@@ -109,6 +109,6 @@ def test_after_no_a_yes_confirms_the_open_request(server):
     say(url, "no")
 
     confirmed = say(url, "yes")
-    done = call(url, "do_confirmed_request", user_id="u1", pending_id=confirmed["pending_id"])
+    done = call(url, "do_confirmed_request", user_id="user1", pending_id=confirmed["pending_id"])
 
     assert done == {"done": True, "say": "Done. Reminder set: doctor appointment, tomorrow 10:00."}

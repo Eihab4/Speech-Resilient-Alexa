@@ -56,12 +56,12 @@ class CapturingClient:
 def hear(store, brain, heard):
     history = History(store, MockSummarizer(400), recent_messages=10, summary_trigger_words=400)
     return understand(
-        brain, store, history, "demo", "u1", heard, countdown_seconds=5, pacing=Pacing(store, PauseSettings())
+        brain, store, history, "demo", "user1", heard, countdown_seconds=5, pacing=Pacing(store, PauseSettings())
     )
 
 
 def test_the_brain_gets_the_name_the_person_signed_in_with(store):
-    store.save_profile("demo", "u1", Profile(name="Ahmed"))
+    store.save_profile("demo", "user1", Profile(name="Ahmed"))
     brain = RecordingBrain()
 
     hear(store, brain, "call mom")

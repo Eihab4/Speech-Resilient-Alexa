@@ -30,18 +30,20 @@ beforeEach(async () => {
   globalThis.window = globalThis;
   globalThis.Audio = FakeAudio;
   globalThis.fetch = vi.fn(async (url, init) => {
-    requests.push({ url, body: JSON.parse(init.body) });
+    requests.push({ url, body: JSON.parse(init.body), authorization: init.headers.Authorization });
     return respond();
   });
   const { createPollyVoice } = await import("../src/polly.js");
-  voice = createPollyVoice();
+  voice = createPollyVoice(() => "session-token");
 });
 
 test("the text goes to the server's speak route and the audio is played", async () => {
   const done = voice.speak("Mm-hm, go on.");
 
   await vi.waitFor(() => expect(players).toHaveLength(1));
-  expect(requests).toEqual([{ url: "http://127.0.0.1:8000/speak", body: { text: "Mm-hm, go on." } }]);
+  expect(requests).toEqual([
+    { url: "http://127.0.0.1:8000/speak", body: { text: "Mm-hm, go on." }, authorization: "Bearer session-token" },
+  ]);
   expect(players[0].src).toMatch(/^blob:/);
 
   players[0].end();

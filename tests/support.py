@@ -63,9 +63,9 @@ def start_server(path: str = "/mcp", **env: str | None) -> tuple[subprocess.Pope
     return process, f"http://127.0.0.1:{port}{path}"
 
 
-def with_client(url: str, action) -> Any:
+def with_client(url: str, action, token: str | None = None) -> Any:
     async def run():
-        async with Client(url) as client:
+        async with Client(url, auth=token) as client:
             return await action(client)
 
     return asyncio.run(run())
@@ -73,7 +73,7 @@ def with_client(url: str, action) -> Any:
 
 def base_url(url: str) -> str:
     """The server's root, from its /mcp URL, for the page's own routes."""
-    return url.removesuffix("/mcp")
+    return url.rsplit("/", 1)[0]
 
 
 def http(url: str, method: str = "GET", body: Any = None, token: str | None = None) -> tuple[int, Any]:
@@ -86,6 +86,17 @@ def http(url: str, method: str = "GET", body: Any = None, token: str | None = No
             return response.status, json.loads(response.read() or b"null")
     except HTTPError as error:
         return error.code, json.loads(error.read() or b"null")
+
+
+TOKENS: dict[tuple[str, str], str] = {}
+
+
+def token_for(url: str, username: str = "user1") -> str:
+    """Signs the person in on the server at url, creating the account the first time."""
+    if (url, username) not in TOKENS:
+        status, session = http(f"{base_url(url)}/signin", "POST", {"username": username, "password": "secret1"})
+        TOKENS[(url, username)] = session["token"] if status == 200 else sign_up(url, username, username.title())
+    return TOKENS[(url, username)]
 
 
 def sign_up(url: str, username: str = "ahmed", name: str = "Ahmed", password: str = "secret1") -> str:
