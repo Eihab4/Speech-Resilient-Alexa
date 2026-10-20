@@ -2,6 +2,7 @@
   "answers": {
     "tomorrow": {
       "intent": "reminder",
+      "details": {"when": "tomorrow"},
       "next_move": "listen",
       "say": "Mm-hm, go on."
     },

@@ -28,12 +28,13 @@ def confirmed_reminder(url):
     return say(url, "yes")
 
 
-def inspect(db_path, user_id="user1"):
+def inspect(db_path, user_id="user1", request_id=None):
     store = SqliteMemoryStore(db_path)
     conversation = store.conversation_for("demo", user_id)
     pending, actions = store.pending_request(conversation), store.actions(conversation)
+    row = store.request(conversation, request_id) if request_id else None
     store.close()
-    return pending, actions
+    return pending, actions, row
 
 
 def test_a_yes_then_do_confirmed_request_performs_the_action(server, db_path):
@@ -41,7 +42,7 @@ def test_a_yes_then_do_confirmed_request_performs_the_action(server, db_path):
     yes = confirmed_reminder(url)
 
     done = call(url, "do_confirmed_request", user_id="user1", pending_id=yes["pending_id"])
-    pending, actions = inspect(db_path)
+    pending, actions, _ = inspect(db_path)
 
     assert yes["next_move"] == NextMove.DONE
     assert done == {"done": True, "say": "Done. Reminder set: doctor appointment, tomorrow 10:00."}
@@ -133,14 +134,9 @@ def test_never_mind_tells_the_agent_to_cancel_then_clears_the_request(server, db
     assert decision["next_move"] == NextMove.CANCEL
     assert cancelled == {"cancelled": True, "say": Reply.CANCELLED}
     assert inspect(db_path)[0] is None
-    assert request_row(db_path, decision["pending_id"]).intent == "reminder"
-
-
-def request_row(db_path, pending_id, user_id="user1"):
-    store = SqliteMemoryStore(db_path)
-    request = store.request(store.conversation_for("demo", user_id), pending_id)
-    store.close()
-    return request
+    cancelled_row = inspect(db_path, request_id=decision["pending_id"])[2]
+    assert cancelled_row.intent == "reminder"
+    assert cancelled_row.details == {"when": "tomorrow"}
 
 
 def test_cancel_with_nothing_pending_says_so(server):
