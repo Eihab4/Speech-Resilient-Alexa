@@ -13,6 +13,7 @@ import { createSos } from "./sos.js";
 import { createBrowserVoice, isBrowserVoiceSupported } from "./speak.js";
 import { createTranscribeListener, isMicSupported } from "./transcribe.js";
 import { createListener, isVoiceSupported } from "./voice.js";
+import { asksForSos } from "./words.js";
 
 const form = document.querySelector("#turn-form");
 const heard = document.querySelector("#heard");
@@ -124,8 +125,7 @@ const listenerEvents = {
     heard.value = [gatherer.pending, text].filter(Boolean).join(" ");
   },
   onFragment: (text) => {
-    // During an emergency countdown, "stop" can't wait.
-    gatherer.piece(text, { immediate: sos.state !== "idle" });
+    gatherer.piece(text, { immediate: sos.state !== "idle" || asksForSos(text) });
     heard.value = gatherer.pending;
   },
   onListeningChange: (listening) => {
