@@ -43,6 +43,11 @@ class TranscriptType(StrEnum):
     ERROR = "error"  # Transcribe failed after it started
 
 
+class AlertKind(StrEnum):
+    SOS = "sos"
+    HELP = "help"
+
+
 class AlertStatus(StrEnum):
     SENT = "sent"  # at least one helper got it
     FAILED = "failed"  # every helper's channel failed

@@ -3,7 +3,7 @@ import re
 from datetime import datetime
 
 from config.settings import SosSettings
-from enums import AlertStatus, NextMove
+from enums import AlertKind, AlertStatus, NextMove
 from location import Geocoder
 from memory import Alert, Helper, MemoryStore, Profile, Turn
 from messages import MAP_URL, SOS_PHRASES, STOP_WORDS, AlertText, LogMessage, Reply
@@ -40,7 +40,7 @@ def emergency_sos(
     longitude: float | None = None,
 ) -> dict:
     conversation = store.conversation_for(company_id, user_id)
-    recent = store.last_sent_alert(company_id, user_id)
+    recent = store.last_sent_alert(company_id, user_id, AlertKind.SOS)
     if recent and recent.created_at >= hours_ago(settings.cooldown_minutes / 60):
         return _finish(store, conversation, Reply.SOS_ALREADY_SENT, sent_to=[])
 
@@ -59,7 +59,15 @@ def emergency_sos(
         status = AlertStatus.SENT
         say = (Reply.SOS_SENT if position else Reply.SOS_SENT_NO_PLACE).format(who=_names(sent_to))
 
-    alert = Alert(heard=heard, latitude=latitude, longitude=longitude, address=address, text=text, status=status)
+    alert = Alert(
+        kind=AlertKind.SOS,
+        heard=heard,
+        latitude=latitude,
+        longitude=longitude,
+        address=address,
+        text=text,
+        status=status,
+    )
     store.add_alert(company_id, user_id, alert)
     return _finish(store, conversation, say, sent_to)
 

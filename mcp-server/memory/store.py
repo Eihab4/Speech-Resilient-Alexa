@@ -1,5 +1,6 @@
 from typing import Protocol
 
+from enums import AlertKind
 from memory.models import Action, Alert, DayTries, Helper, Profile, Request, Summary, Turn
 
 
@@ -46,7 +47,7 @@ class MemoryStore(Protocol):
 
     def add_alert(self, company_id: str, user_id: str, alert: Alert) -> Alert: ...
 
-    def last_sent_alert(self, company_id: str, user_id: str) -> Alert | None: ...
+    def last_sent_alert(self, company_id: str, user_id: str, kind: AlertKind) -> Alert | None: ...
 
     def alerts(self, company_id: str, user_id: str) -> list[Alert]: ...
 
