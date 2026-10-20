@@ -22,6 +22,7 @@ class Moment:
     request: Request  # the open request, or a new empty one
     earlier: list[Turn]  # the open request's pieces so far
     person: str  # the name the person signed in with, for the brain to use
+    tries: int  # how many times Alexa has already asked about this request
 
     def ask_brain(self, pieces: list[str]) -> BrainResult:
         return self.brain.interpret(pieces, self.history.for_brain(self.conversation), self.person)
@@ -56,6 +57,7 @@ def understand(
     conversation = store.conversation_for(company_id, user_id)
     request = store.pending_request(conversation) or Request()
     profile = store.profile(company_id, user_id)
+    earlier = store.turns(conversation, request.id)
     now = Moment(
         brain=brain,
         store=store,
@@ -64,8 +66,9 @@ def understand(
         fragment=fragment,
         last=store.last_turn(conversation),
         request=request,
-        earlier=store.turns(conversation, request.id),
+        earlier=earlier,
         person=profile.name if profile else "",
+        tries=sum(turn.next_move == NextMove.ASK for turn in earlier),
     )
 
     # Checked before the brain, so an emergency is caught even when the LLM is down or slow.
@@ -82,7 +85,8 @@ def understand(
         now.last is not None and now.last.next_move == NextMove.LISTEN and now.last.request_id == step.request_id
     )
     wait = pacing.learn(company_id, user_id, pauses_ms or [], answered_too_early)
-    return {**step.result.model_dump(), "pending_id": step.request.id, "wait_seconds": wait}
+    tries = now.tries + (step.result.next_move == NextMove.ASK)
+    return {**step.result.model_dump(), "pending_id": step.request.id, "wait_seconds": wait, "tries": tries}
 
 
 def _emergency(now: Moment, countdown_seconds: int) -> dict | None:

@@ -71,6 +71,17 @@ def with_client(url: str, action, token: str | None = None) -> Any:
     return asyncio.run(run())
 
 
+class RunNow:
+    def __init__(self, target, args=(), daemon=None):
+        self.target, self.args = target, args
+
+    def start(self):
+        self.target(*self.args)
+
+    def join(self, timeout=None):
+        pass
+
+
 def base_url(url: str) -> str:
     """The server's root, from its /mcp URL, for the page's own routes."""
     return url.rsplit("/", 1)[0]

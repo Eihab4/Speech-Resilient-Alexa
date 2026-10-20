@@ -12,23 +12,7 @@ from messages import Prompt
 from pacing import Pacing
 from tools.understand_speech import understand
 
-
-class RunNow:
-    def __init__(self, target, args=(), daemon=None):
-        self.target, self.args = target, args
-
-    def start(self):
-        self.target(*self.args)
-
-    def join(self, timeout=None):
-        pass
-
-
-@pytest.fixture(autouse=True)
-def tidy_history_in_line(monkeypatch):
-    # understand() tidies the history in a background thread. Run it in line, or the store below can be
-    # closed while that thread is still reading it, and SQLite crashes the whole test run.
-    monkeypatch.setattr("memory.history.Thread", RunNow)
+pytestmark = pytest.mark.usefixtures("history_in_line")
 
 
 @pytest.fixture
