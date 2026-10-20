@@ -21,6 +21,10 @@ class ToolDescription(StrEnum):
         "Call this once when a session starts. Returns a request the person left unfinished last time, "
         "so you can offer to pick it up instead of making them start over."
     )
+    SPEECH_TREND = (
+        "How many questions Alexa needed per finished request, day by day, for the last TREND_DAYS days. "
+        "Call it when the person or their family asks how it is going, or to show progress over time."
+    )
     EMERGENCY_SOS = (
         "Send the person's helpers an emergency alert right away, with no yes. Call it when the countdown "
         "that understand_speech asked for (next_move sos) ends without the person saying stop. "

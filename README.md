@@ -145,6 +145,7 @@ The server accepts browser calls from any `localhost` port. To allow another pag
 | `cancel_request`       | Drops the request in progress.                                                                         |
 | `resume_unfinished`    | At the start of a session, offers back a request left unfinished last time.                            |
 | `emergency_sos`        | Sends the person's helpers an emergency alert with where they are, after a countdown nobody stopped.   |
+| `speech_trend`         | How many questions Alexa needed per finished request, day by day, so progress is visible.             |
 
 ## Settings
 
@@ -162,6 +163,7 @@ Everything is read from environment variables. `.env.example` lists every settin
 | `SOS_COOLDOWN_MINUTES`         | How soon the same emergency alert can be sent again                   |
 | `PAUSE_START_SECONDS`, `PAUSE_MIN_SECONDS`, `PAUSE_MAX_SECONDS` | How long Alexa waits for a new person, and the limits of what she learns |
 | `YES_NO_AFTER_TRIES`           | After this many questions about one request, Alexa guesses and asks yes or no instead |
+| `TREND_DAYS`                   | How many days `speech_trend` looks back                               |
 | `TELEGRAM_BOT_TOKEN`           | The bot that delivers emergency alerts; empty writes them to the log  |
 | `LOCATION_ENABLED`             | Whether Amazon Location adds an address to emergency alerts           |
 

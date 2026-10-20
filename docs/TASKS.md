@@ -35,7 +35,7 @@ Next to each tool is the service it uses. **Polly** and **the brain** (the LLM) 
 ### Do first
 
 - [ ] **`ask_for_help`** — SNS, memory: when the person says "help", or Alexa still hasn't understood after a few tries, the caregiver gets what was understood so far ("Dad is trying to set a reminder for the doctor tomorrow, the time is unclear"). In the demo, a teammate's phone gets the SMS live.
-- [ ] **`speech_trend`** — memory only: how many tries Alexa needed per request, day by day ("4 tries on day one, 1 now"). Goes with **Usual requests** in Memory: together they show Alexa learns the person over time.
+- [x] **Eihab — `speech_trend`** — memory only: how many questions Alexa needed per finished request, day by day, for the last `TREND_DAYS` days, with a sentence that compares the first day to now. Details: [feature-speech-trend.md](branches/feature-speech-trend.md).
 - [ ] **`speech_practice`** — Transcribe, memory: daily speech exercises. Alexa gives words to say, scores each one from Transcribe's confidence per word, and tracks progress with `speech_trend`. For people recovering after a stroke. Today the server only passes the text on, so `transcription/stream.py` must also pass the confidence.
 - [ ] **`finish_my_sentence`** — memory, brain: the person says "call…" and stops. Alexa offers the likely endings: "Mom? Sara? The doctor?", like phone keyboard suggestions, but spoken. The suggestions come from **Usual requests**, so do that first.
 - [ ] **`notice_frustration`** — Comprehend: when the person repeats themselves or says "no no no", Alexa calms things down ("Take your time, I'm listening") and switches to yes/no questions or offers help. Comprehend reads the mood of the text and supports Arabic.

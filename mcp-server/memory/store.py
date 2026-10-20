@@ -1,6 +1,6 @@
 from typing import Protocol
 
-from memory.models import Action, Alert, Helper, Profile, Request, Summary, Turn
+from memory.models import Action, Alert, DayTries, Helper, Profile, Request, Summary, Turn
 
 
 class MemoryStore(Protocol):
@@ -29,6 +29,8 @@ class MemoryStore(Protocol):
     def log_action(self, request_id: str, result: str) -> Action: ...
 
     def actions(self, conversation_id: int) -> list[Action]: ...
+
+    def tries_per_day(self, conversation_id: int, days: int) -> list[DayTries]: ...
 
     def save_profile(self, company_id: str, user_id: str, profile: Profile) -> None: ...
 
