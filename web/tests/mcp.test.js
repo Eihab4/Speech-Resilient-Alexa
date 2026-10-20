@@ -16,7 +16,7 @@ vi.mock("@modelcontextprotocol/client", () => ({
   StreamableHTTPClientTransport: class {},
 }));
 
-const { takeTurn } = await import("../src/mcp.js");
+const { speechTrend, takeTurn } = await import("../src/mcp.js");
 
 beforeEach(() => {
   calls.length = 0;
@@ -53,4 +53,13 @@ test("a help move tells the helper at once and says both sentences", async () =>
   expect(result.next_move).toBe(NextMove.HELP);
   expect(result.sent_to).toEqual(["Sara"]);
   expect(result.say).toBe("Okay, I'll ask your helper. I sent Sara what I understood so far. Go on.");
+});
+
+test("the trend is asked for the signed-in person", async () => {
+  answers = { [Tool.SPEECH_TREND]: { days: [], say: "We haven't finished a request together yet." } };
+
+  const result = await speechTrend("t1");
+
+  expect(calls).toEqual([[Tool.SPEECH_TREND, {}]]);
+  expect(result.say).toBe("We haven't finished a request together yet.");
 });

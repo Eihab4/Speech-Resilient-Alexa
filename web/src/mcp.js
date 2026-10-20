@@ -68,3 +68,7 @@ export async function takeTurn(token, heard, pausesMs = []) {
 export function sendSos(token, position) {
   return callTool(Tool.EMERGENCY_SOS, position, token);
 }
+
+export function speechTrend(token) {
+  return callTool(Tool.SPEECH_TREND, {}, token);
+}
