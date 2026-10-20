@@ -15,18 +15,18 @@ logger = logging.getLogger(__name__)
 SOS_PATTERN = re.compile(r"\b(" + "|".join(map(re.escape, SOS_PHRASES)) + r")\b")
 
 
-def _words(heard: str) -> str:
+def plain_words(heard: str) -> str:
     """The piece as plain lowercase words, so punctuation and pauses ("i… fell") don't matter."""
     return " ".join(re.findall(r"[a-z']+", heard.lower().replace("’", "'")))
 
 
 def asks_for_sos(heard: str) -> bool:
-    words = _words(heard)
+    words = plain_words(heard)
     return bool(SOS_PATTERN.search(words)) or words.split().count("help") >= 2
 
 
 def says_stop(heard: str) -> bool:
-    return _words(heard) in STOP_WORDS
+    return plain_words(heard) in STOP_WORDS
 
 
 def emergency_sos(

@@ -9,6 +9,7 @@ class NextMove(StrEnum):
     DONE = "done"
     SWITCH = "switch"  # asked whether to drop the open request for a new one
     SOS = "sos"  # counting down before an emergency alert; "stop" cancels it
+    HELP = "help"
 
 
 class Intent(StrEnum):

@@ -6,6 +6,7 @@ from enums import AskMode, NextMove, RequestStatus
 from memory import History, MemoryStore, Request, Turn
 from messages import NO_WORDS, YES_WORDS, Reply
 from pacing import Pacing
+from tools.ask_for_help import asks_for_help
 from tools.emergency_sos import asks_for_sos, says_stop
 
 
@@ -82,6 +83,8 @@ def understand(
     # Checked before the brain, so an emergency is caught even when the LLM is down or slow.
     if (emergency := _emergency(now, countdown_seconds)) is not None:
         return {**emergency, "wait_seconds": pacing.wait(company_id, user_id)}
+    if asks_for_help(fragment):
+        return {**_ask_for_help(now), "wait_seconds": pacing.wait(company_id, user_id)}
 
     step = _decide(now)
     store.save_request(conversation, step.request)
@@ -108,6 +111,13 @@ def _emergency(now: Moment, countdown_seconds: int) -> dict | None:
     now.store.add_turn(now.conversation, Turn(request_id=None, heard=now.fragment, say=say, next_move=NextMove.SOS))
     result = BrainResult(next_move=NextMove.SOS, say=say)
     return {**result.model_dump(), "pending_id": None, "countdown_seconds": countdown_seconds}
+
+
+def _ask_for_help(now: Moment) -> dict:
+    turn = Turn(request_id=None, heard=now.fragment, say=Reply.HELP_ASKED, next_move=NextMove.HELP)
+    now.store.add_turn(now.conversation, turn)
+    result = BrainResult(intent=now.request.intent, details=now.request.details, next_move=NextMove.HELP, say=turn.say)
+    return {**result.model_dump(), "pending_id": now.request.id if now.earlier else None}
 
 
 def _stop_countdown(now: Moment) -> dict:
