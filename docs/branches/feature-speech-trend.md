@@ -43,5 +43,5 @@ uv run pytest tests/test_speech_trend.py
 
 ## Still open
 
-1. **The page does not show it yet.** A small line under the conversation ("4 questions per request on your first day, 1 now") would make the demo point.
+1. **The page shows it** since [feature/ask-for-help](feature-ask-for-help.md): one line under the conversation.
 2. **`speech_practice`** can reuse this query shape for its own scores.
