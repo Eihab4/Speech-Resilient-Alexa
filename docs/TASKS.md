@@ -39,7 +39,7 @@ Next to each tool is the service it uses. **Polly** and **the brain** (the LLM) 
 - [ ] **`speech_practice`** — Transcribe, memory: daily speech exercises. Alexa gives words to say, scores each one from Transcribe's confidence per word, and tracks progress with `speech_trend`. For people recovering after a stroke. Today the server only passes the text on, so `transcription/stream.py` must also pass the confidence.
 - [ ] **`finish_my_sentence`** — memory, brain: the person says "call…" and stops. Alexa offers the likely endings: "Mom? Sara? The doctor?", like phone keyboard suggestions, but spoken. The suggestions come from **Usual requests**, so do that first.
 - [ ] **`notice_frustration`** — Comprehend: when the person repeats themselves or says "no no no", Alexa calms things down ("Take your time, I'm listening") and switches to yes/no questions or offers help. Comprehend reads the mood of the text and supports Arabic.
-- [ ] **`yes_no_mode`** — memory only: after a few failed tries, Alexa stops asking to repeat and asks yes/no questions instead ("Do you want to call someone?" "Mom?"). A change in `understand_speech`, not a new tool.
+- [x] **Eihab — `yes_no_mode`** — memory only: after `YES_NO_AFTER_TRIES` questions about one request, Alexa stops asking the person to repeat and guesses instead ("Mom?"); a yes accepts the guess. Every reply carries `tries`, which `speech_trend` can read. Details: [feature-yes-no-mode.md](branches/feature-yes-no-mode.md).
 - [ ] **`my_phrases`** — Polly, memory: one word says a saved sentence. "doctor" → "I'm not feeling well and I need a doctor."
 - [ ] **`translate_for_me`** — Translate, Polly: the person speaks Arabic, and Alexa says it in English (for a doctor, for example).
 

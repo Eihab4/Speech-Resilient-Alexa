@@ -13,8 +13,9 @@ from urllib.request import Request, urlopen
 import pytest
 from fastmcp import Client
 
+from brain.schemas import BrainResult
 from config import Settings
-from enums import LlmProvider
+from enums import LlmProvider, NextMove
 
 SERVER_SCRIPT = Path(__file__).resolve().parents[1] / "mcp-server" / "server.py"
 
@@ -69,6 +70,23 @@ def with_client(url: str, action, token: str | None = None) -> Any:
             return await action(client)
 
     return asyncio.run(run())
+
+
+class CapturingClient:
+    def complete(self, system, user, schema=None):
+        self.system, self.user = system, json.loads(user)
+        return BrainResult(next_move=NextMove.LISTEN, say="Mm-hm.").model_dump_json()
+
+
+class RunNow:
+    def __init__(self, target, args=(), daemon=None):
+        self.target, self.args = target, args
+
+    def start(self):
+        self.target(*self.args)
+
+    def join(self, timeout=None):
+        pass
 
 
 def base_url(url: str) -> str:

@@ -29,6 +29,11 @@ class SocketProtocol(StrEnum):
     BEARER = "bearer"
 
 
+class AskMode(StrEnum):
+    OPEN = "open"
+    YES_NO = "yes_no"
+
+
 class TranscriptType(StrEnum):
     """What the /transcribe WebSocket sends back to the page."""
 

@@ -47,7 +47,7 @@ def tidy_history_in_line(monkeypatch):
 class ScriptedBrain:
     """Answers "go on" until the request has a who, then asks to confirm."""
 
-    def interpret(self, fragments, history="", person=""):
+    def interpret(self, fragments, history="", person="", question="", mode=None):
         if "mom" in " ".join(fragments):
             return BrainResult(intent="call", details={"who": "mom"}, next_move=NextMove.CONFIRM, say="Call Mom?")
         return BrainResult(next_move=NextMove.LISTEN, say="Mm-hm, go on.")
