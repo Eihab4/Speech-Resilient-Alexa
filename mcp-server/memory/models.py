@@ -36,6 +36,12 @@ class Action(BaseModel):
     created_at: str
 
 
+class DayTries(BaseModel):
+    day: str
+    requests: int
+    tries: float
+
+
 class Profile(BaseModel):
     name: str
     home_address: str | None = None
