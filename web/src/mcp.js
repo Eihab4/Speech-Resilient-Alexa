@@ -41,8 +41,9 @@ async function callTool(name, args) {
 
 // With no AI host in the page, this plays Alexa's part: it makes the follow-up call
 // that understand_speech asks for.
-export async function takeTurn(userId, heard) {
-  const decision = await callTool(Tool.UNDERSTAND_SPEECH, { user_id: userId, heard });
+export async function takeTurn(userId, heard, pausesMs = []) {
+  const args = { user_id: userId, heard, ...(pausesMs.length ? { pauses_ms: pausesMs } : {}) };
+  const decision = await callTool(Tool.UNDERSTAND_SPEECH, args);
 
   if (decision.next_move === NextMove.CANCEL) {
     return { ...decision, ...(await callTool(Tool.CANCEL_REQUEST, { user_id: userId })) };

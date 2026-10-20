@@ -14,6 +14,7 @@ from location import create_geocoder
 from memory import History, SqliteMemoryStore
 from messages import ToolDescription
 from notify import HelperLinker, create_bot, create_notifier
+from pacing import Pacing
 from people import create_people_routes
 from speech import PollySynthesizer, create_speak_endpoint
 from tools.cancel_request import cancel_request as cancel
@@ -47,6 +48,7 @@ async def resources(server: FastMCP):
         "history": history,
         "notifier": create_notifier(bot),
         "geocoder": create_geocoder(settings),
+        "pacing": Pacing(store, settings.pause),
     }
     stop.set()
     # A summary may still be being written; closing the store under it can crash SQLite.
@@ -78,10 +80,18 @@ def is_allowed_origin(origin: str | None) -> bool:
 
 
 @mcp.tool(description=ToolDescription.UNDERSTAND_SPEECH)
-def understand_speech(user_id: str, heard: str, ctx: Context) -> dict:
+def understand_speech(user_id: str, heard: str, ctx: Context, pauses_ms: list[int] | None = None) -> dict:
     r = ctx.lifespan_context
     return understand(
-        r["brain"], r["store"], r["history"], settings.memory.company_id, user_id, heard, settings.sos.countdown_seconds
+        r["brain"],
+        r["store"],
+        r["history"],
+        settings.memory.company_id,
+        user_id,
+        heard,
+        settings.sos.countdown_seconds,
+        r["pacing"],
+        pauses_ms,
     )
 
 
@@ -116,7 +126,10 @@ def create_app():
     app.router.routes.append(WebSocketRoute(settings.transcribe.path, transcribe))
     speak = create_speak_endpoint(PollySynthesizer(settings.polly))
     app.router.routes.append(Route(settings.polly.path, speak, methods=["POST"]))
-    app.router.routes.extend(create_people_routes(open_store(), bot, settings.memory.company_id))
+    people = open_store()
+    app.router.routes.extend(
+        create_people_routes(people, bot, settings.memory.company_id, Pacing(people, settings.pause))
+    )
     return app
 
 

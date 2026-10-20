@@ -4,7 +4,7 @@ import { forgetSession, loadSession, saveSession } from "./session.js";
 
 // The sign-in and create-account forms, and who is signed in. The page tells this what to do around it:
 // greet the person once they are in, and clear itself when they leave.
-export function setupSignIn({ onSignedIn, onSignedOut }) {
+export function setupSignIn({ onSignedIn, onSignedOut, onSession = () => {} }) {
   const account = document.querySelector("#account");
   const signInForm = document.querySelector("#sign-in-form");
   const signUpForm = document.querySelector("#sign-up-form");
@@ -36,6 +36,7 @@ export function setupSignIn({ onSignedIn, onSignedOut }) {
     }
     form.reset();
     show();
+    onSession(session);
     onSignedIn(session);
   }
 
@@ -74,8 +75,9 @@ export function setupSignIn({ onSignedIn, onSignedOut }) {
     if (!session) return;
     try {
       const me = await whoAmI(session.token);
-      session = saveSession({ ...session, name: me.name });
+      session = saveSession({ ...session, name: me.name, wait_seconds: me.wait_seconds });
       show();
+      onSession(session);
     } catch (error) {
       if (error.status === 401) leave();
     }

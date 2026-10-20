@@ -2,8 +2,10 @@
 
 ## Voice
 
-- [x] **Rana — Voice input (speech → text):** a Speak button; each pause sends what was said as its own turn. The microphone streams to the server, which uses Amazon Transcribe. If Transcribe is unavailable, the browser's own speech recognition takes over (Chrome and Edge).
+- [x] **Rana — Voice input (speech → text):** a Speak button; what was said goes to the server in pieces. The microphone streams to the server, which uses Amazon Transcribe. If Transcribe is unavailable, the browser's own speech recognition takes over (Chrome and Edge).
 - [x] **Eihab — Voice output (text → speech):** Alexa reads every reply aloud with Amazon Polly (neural voice, Joanna by default) through the server's `POST /speak`, so the AWS keys never reach the browser. The browser's voice is the fallback. The microphone pauses while she talks, and **Mute Alexa** cuts her off.
+- [x] **Rana — Learn each person's pauses:** Alexa waits each person's own mid-sentence pause length before answering, instead of jumping in at every pause. Learned from their measured pauses (outliers dropped, 75th percentile) and from her early answers; returned as `wait_seconds`. Details: [feature-learn-pauses.md](branches/feature-learn-pauses.md).
+- [ ] **SOS by voice waits too:** "I fell" said aloud starts the countdown only after the person's wait (up to 6 s). Make SOS words skip the wait in the page.
 - [ ] **Polly retry:** once Polly fails, the page stays on the robotic browser voice until it's reloaded. Try Polly again on the next reply instead (`../web/src/output.js`).
 - [ ] **Rana — `learn_my_speech`:** keep a word list per person in SQLite (names from contacts, and corrections like "no, *Sara*"). Push it to a Transcribe custom vocabulary so Alexa learns their words. An update takes a few minutes to be ready, so keep using the old list until then.
 
@@ -11,6 +13,9 @@
 
 - [x] **Rana — New request in the middle of one:** when the person starts something different while a request is open, Alexa asks before switching ("Should I stop the doctor reminder and call Mom instead?"), so each request stays its own row. Details: [feature-new-request.md](branches/feature-new-request.md).
 - [ ] **Rana — Usual requests (after the task above):** Alexa counts what the person asks for most and uses it to understand broken speech faster ("c… mom" → "Call Mom?"). Still asks for yes. Details: [feature-usual-requests.md](branches/feature-usual-requests.md).
+- [x] **Rana — Sign-in:** a username and password per person, so two people with the same name never share a memory; Alexa calls the person by the name on their account. Details: [feature-sign-in.md](branches/feature-sign-in.md).
+- [x] **Stability:** one lock on the shared SQLite connection, and the server waits for the history tidy-up before closing (both could crash it).
+- [ ] **Bug — the brain treats a finished request as open:** the history notes how a cancelled or replaced request ended, but not a finished one, so after "call mom" is done the brain may ask "Should I stop the doctor reminder…?". Add "(this request was done)" in `REQUEST_ENDINGS` (`mcp-server/messages/prompts.py`).
 - [ ] **Bug — `cancel` saved as an intent:** when the person cancels, the request is saved with `intent = "cancel"`, which isn't a valid intent (only reminder, message, call).
 
 ## New tools
@@ -39,7 +44,7 @@ Next to each tool is the service it uses. **Polly** and **the brain** (the LLM) 
 
 ### If there's time
 
-- [ ] **`emergency_sos`** — Telegram, Location, browser location: "I fell", "help help", "emergency". Instead of asking "yes", Alexa counts down 5 seconds ("say stop if you're okay"), then sends every helper a Telegram alert with the address and a map pin. Silence sends it. Helpers are added from the page and link themselves by opening the bot. Details: [feature-emergency-sos.md](branches/feature-emergency-sos.md).
+- [x] **Rana — `emergency_sos`** — Telegram, Location, browser location: "I fell", "help help", "emergency". Instead of asking "yes", Alexa counts down 5 seconds ("say stop if you're okay"), then sends every helper a Telegram alert with the address and a map pin. Silence sends it. Helpers are added from the page and link themselves by opening the bot. Details: [feature-emergency-sos.md](branches/feature-emergency-sos.md).
 - [ ] **`where_am_i`** — Location, browser location: says the current address (`ReverseGeocode`), then offers to send it to someone.
 - [ ] **`share_location`** — SNS, browser location: "send Sara my location" sends the contact a map pin.
 - [ ] **`find_nearby`** — Location, browser location: "nearest pharmacy?" answers with name, address and distance (`SearchNearby`).

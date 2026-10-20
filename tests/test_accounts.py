@@ -20,7 +20,7 @@ def test_creating_an_account_signs_in_and_keeps_the_name(server):
     assert status == 201
     assert session["username"] == "rana_h"
     assert session["name"] == "Rana"
-    assert me == (200, {"username": "rana_h", "name": "Rana"})
+    assert me == (200, {"username": "rana_h", "name": "Rana", "wait_seconds": 2})
 
 
 def test_a_username_belongs_to_one_account(server):

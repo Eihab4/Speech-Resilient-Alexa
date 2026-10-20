@@ -5,9 +5,11 @@ import pytest
 from brain.interpreter import LlmBrain
 from brain.schemas import BrainResult
 from brain.summarizer import MockSummarizer
+from config.settings import PauseSettings
 from enums import NextMove
 from memory import History, Profile, SqliteMemoryStore
 from messages import Prompt
+from pacing import Pacing
 from tools.understand_speech import understand
 
 
@@ -53,7 +55,9 @@ class CapturingClient:
 
 def hear(store, brain, heard):
     history = History(store, MockSummarizer(400), recent_messages=10, summary_trigger_words=400)
-    return understand(brain, store, history, "demo", "u1", heard, countdown_seconds=5)
+    return understand(
+        brain, store, history, "demo", "u1", heard, countdown_seconds=5, pacing=Pacing(store, PauseSettings())
+    )
 
 
 def test_the_brain_gets_the_name_the_person_signed_in_with(store):
