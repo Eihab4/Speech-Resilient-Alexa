@@ -3,7 +3,7 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
-from enums import AlertStatus, NextMove, RequestStatus
+from enums import AlertStatus, Intent, NextMove, RequestStatus
 from utils import new_id, utc_now
 
 
@@ -19,7 +19,7 @@ class Turn(BaseModel):
 
 class Request(BaseModel):
     id: str = Field(default_factory=lambda: new_id("p"))
-    intent: str | None = None
+    intent: Intent | None = None
     details: dict[str, Any] = Field(default_factory=dict)
     status: RequestStatus = RequestStatus.PENDING
     updated_at: str = Field(default_factory=utc_now)
@@ -34,6 +34,12 @@ class Action(BaseModel):
     request_id: str
     result: str
     created_at: str
+
+
+class DayTries(BaseModel):
+    day: str
+    requests: int
+    tries: float
 
 
 class Profile(BaseModel):

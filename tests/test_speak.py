@@ -7,14 +7,16 @@ import boto3
 import pytest
 
 from messages import ErrorMessage
+from support import token_for
 
 
 def speak_url(url: str) -> str:
     return url.rsplit("/", 1)[0] + "/speak"
 
 
-def post(url: str, body: bytes):
-    request = Request(url, data=body, method="POST", headers={"Content-Type": "application/json"})
+def post(url: str, body: bytes, token: str | None = None):
+    headers = {"Content-Type": "application/json"} | ({"Authorization": f"Bearer {token}"} if token else {})
+    request = Request(url, data=body, method="POST", headers=headers)
     try:
         with urlopen(request) as response:
             return response.status, response.headers["Content-Type"], response.read()
@@ -22,8 +24,17 @@ def post(url: str, body: bytes):
         return error.code, error.headers["Content-Type"], error.read()
 
 
+def test_speaking_needs_a_sign_in(server):
+    status, _, body = post(speak_url(server()), json.dumps({"text": "Done."}).encode())
+
+    assert status == HTTPStatus.UNAUTHORIZED
+    assert json.loads(body)["error"] == ErrorMessage.NOT_SIGNED_IN
+
+
 def test_speaking_needs_text(server):
-    status, _, body = post(speak_url(server()), json.dumps({"text": "  "}).encode())
+    url = server()
+
+    status, _, body = post(speak_url(url), json.dumps({"text": "  "}).encode(), token_for(url))
 
     assert status == HTTPStatus.BAD_REQUEST
     assert json.loads(body)["error"] == ErrorMessage.SPEECH_TEXT_MISSING
@@ -32,7 +43,7 @@ def test_speaking_needs_text(server):
 def test_the_page_is_told_when_polly_is_unavailable(server):
     url = speak_url(server(AWS_ACCESS_KEY_ID="invalid", AWS_SECRET_ACCESS_KEY="invalid", AWS_SESSION_TOKEN=None))
 
-    status, _, body = post(url, json.dumps({"text": "Done."}).encode())
+    status, _, body = post(url, json.dumps({"text": "Done."}).encode(), token_for(url))
 
     assert status == HTTPStatus.SERVICE_UNAVAILABLE
     assert json.loads(body)["error"] == ErrorMessage.SPEECH_UNAVAILABLE
@@ -40,7 +51,9 @@ def test_the_page_is_told_when_polly_is_unavailable(server):
 
 @pytest.mark.skipif(not boto3.Session().get_credentials(), reason="needs AWS credentials")
 def test_the_page_gets_audio_back(server):
-    status, content_type, body = post(speak_url(server()), json.dumps({"text": "Done."}).encode())
+    url = server()
+
+    status, content_type, body = post(speak_url(url), json.dumps({"text": "Done."}).encode(), token_for(url))
 
     assert status == HTTPStatus.OK
     assert content_type == "audio/mpeg"

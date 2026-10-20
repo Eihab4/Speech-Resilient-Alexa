@@ -5,8 +5,8 @@ from functools import wraps
 from pathlib import Path
 from threading import RLock
 
-from enums import AlertStatus, RequestStatus
-from memory.models import Action, Alert, Helper, Profile, Request, Summary, Turn
+from enums import AlertStatus, Intent, NextMove, RequestStatus
+from memory.models import Action, Alert, DayTries, Helper, Profile, Request, Summary, Turn
 from utils import hours_ago, utc_now
 
 SCHEMA = (Path(__file__).parent / "schema.sql").read_text()
@@ -45,6 +45,14 @@ class SqliteMemoryStore:
         self._db.execute("PRAGMA journal_mode=WAL")
         self._db.execute("PRAGMA foreign_keys=ON")
         self._db.executescript(SCHEMA)
+        self._repair_older_files()
+
+    def _repair_older_files(self) -> None:
+        columns = {row["name"] for row in self._db.execute("PRAGMA table_info(sessions)")}
+        if "expires_at" not in columns:
+            self._db.execute("ALTER TABLE sessions ADD COLUMN expires_at TEXT NOT NULL DEFAULT ''")
+        placeholders = ", ".join("?" * len(Intent))
+        self._db.execute(f"UPDATE requests SET intent = NULL WHERE intent NOT IN ({placeholders})", list(Intent))
 
     @contextmanager
     def _transaction(self):
@@ -167,6 +175,17 @@ class SqliteMemoryStore:
         )
         return [Action(**row) for row in rows]
 
+    def tries_per_day(self, conversation_id: int, days: int) -> list[DayTries]:
+        rows = self._db.execute(
+            "SELECT day, COUNT(*) AS requests, ROUND(AVG(asks), 1) AS tries FROM ("
+            "  SELECT substr(MIN(t.created_at), 1, 10) AS day, SUM(t.next_move = ?) AS asks"
+            "  FROM turns t JOIN requests r ON r.id = t.request_id"
+            "  WHERE t.conversation_id = ? AND r.status = ? GROUP BY t.request_id"
+            ") GROUP BY day ORDER BY day DESC LIMIT ?",
+            (NextMove.ASK, conversation_id, RequestStatus.DONE, days),
+        ).fetchall()
+        return [DayTries(**row) for row in reversed(rows)]
+
     def _user_id(self, company_id: str, user_id: str) -> int:
         with self._transaction():
             self._db.execute("INSERT OR IGNORE INTO companies (id) VALUES (?)", (company_id,))
@@ -279,17 +298,17 @@ class SqliteMemoryStore:
         ).fetchone()
         return row["password_hash"] if row else None
 
-    def add_session(self, company_id: str, username: str, token_hash: str) -> None:
+    def add_session(self, company_id: str, username: str, token_hash: str, expires_at: str) -> None:
         self._db.execute(
-            "INSERT INTO sessions (token_hash, user_id, created_at) VALUES (?, ?, ?)",
-            (token_hash, self._user_id(company_id, username), utc_now()),
+            "INSERT INTO sessions (token_hash, user_id, created_at, expires_at) VALUES (?, ?, ?, ?)",
+            (token_hash, self._user_id(company_id, username), utc_now(), expires_at),
         )
 
     def session_user(self, company_id: str, token_hash: str) -> str | None:
         row = self._db.execute(
             "SELECT u.external_id FROM sessions s JOIN users u ON u.id = s.user_id "
-            "WHERE s.token_hash = ? AND u.company_id = ?",
-            (token_hash, company_id),
+            "WHERE s.token_hash = ? AND u.company_id = ? AND s.expires_at > ?",
+            (token_hash, company_id, utc_now()),
         ).fetchone()
         return row["external_id"] if row else None
 

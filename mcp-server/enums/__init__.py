@@ -1,9 +1,10 @@
 from enums.llm import ChatRole, LlmProvider
-from enums.speech import AlertStatus, Intent, NextMove, RequestStatus, TranscriptType
+from enums.speech import AlertStatus, AskMode, Intent, NextMove, RequestStatus, SocketProtocol, TranscriptType
 from enums.voice import AudioFormat, PollyEngine
 
 __all__ = [
     "AlertStatus",
+    "AskMode",
     "AudioFormat",
     "ChatRole",
     "Intent",
@@ -11,5 +12,6 @@ __all__ = [
     "NextMove",
     "PollyEngine",
     "RequestStatus",
+    "SocketProtocol",
     "TranscriptType",
 ]

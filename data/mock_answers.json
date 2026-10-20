@@ -2,6 +2,7 @@
   "answers": {
     "tomorrow": {
       "intent": "reminder",
+      "details": {"when": "tomorrow"},
       "next_move": "listen",
       "say": "Mm-hm, go on."
     },
@@ -20,7 +21,6 @@
       "say": "Should I stop the doctor reminder and call Mom instead?"
     },
     "tomorrow never mind": {
-      "intent": "reminder",
       "next_move": "cancel",
       "say": "Okay, cancelled."
     },
@@ -42,6 +42,33 @@
       "assumptions": ["eight means 8 AM"],
       "next_move": "confirm",
       "say": "Should I set a reminder for your pills at 8 AM?"
+    },
+    "call": {
+      "intent": "call",
+      "next_move": "ask",
+      "say": "Who do you want to call?"
+    },
+    "call c": {
+      "intent": "call",
+      "next_move": "ask",
+      "say": "Say the name once more?"
+    },
+    "call c cuh": {
+      "intent": "call",
+      "next_move": "ask",
+      "say": "I didn't catch it. Who?"
+    },
+    "call c cuh k [yes_no]": {
+      "intent": "call",
+      "details": {"who": "mom"},
+      "next_move": "ask",
+      "say": "Mom?"
+    },
+    "call c cuh k yes [yes_no]": {
+      "intent": "call",
+      "details": {"who": "mom"},
+      "next_move": "confirm",
+      "say": "Call Mom?"
     },
     "call sara": {
       "intent": "call",

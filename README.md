@@ -8,6 +8,7 @@ An Alexa+ add-on for people whose speech is slow, comes out in pieces, or needs 
 - Transport: **Streamable HTTP** at `http://127.0.0.1:8000/mcp`.
 - MCP spec: negotiates **2025-11-25 or later** (the test suite checks this).
 - Where MCP is imported and called: `mcp-server/server.py`.
+- Every tool call carries the person's sign-in token (bearer). The server takes the person from the token, never from tool input, so nobody can reach another person's memory or helpers.
 - Uses the real OpenRouter brain by default. Add `OPENROUTER_API_KEY` to `.env` before starting it.
 
 ## Architecture
@@ -94,7 +95,14 @@ npx -y @modelcontextprotocol/inspector
 
 ## Try the demo in MCP Inspector
 
-Call `understand_speech` three times for the same `user_id`:
+The tools need a signed-in person. Create one and copy the `token` from the answer:
+
+```bash
+curl -s -X POST http://127.0.0.1:8000/signup -H 'Content-Type: application/json' \
+  -d '{"username":"demo","name":"Demo","password":"secret1"}'
+```
+
+In MCP Inspector, open **Authentication**, choose **Bearer Token** and paste it. Then call `understand_speech` three times:
 
 | Turn | `heard`      | What comes back                                                   |
 | ---- | ------------ | ----------------------------------------------------------------- |
@@ -116,7 +124,7 @@ npm install
 npm run dev
 ```
 
-Open the URL Vite prints (`http://localhost:5180` by default; set `WEB_PORT` in `web/.env` to change it) create an account (a username, the name Alexa calls you by, and a password), and send `tomorrow`, `doctor ten`, `yes`. The browser stays signed in until you sign out, so the family can sign in once for the person. The username is the person's `user_id` in the MCP tools; a real Alexa+ host knows the person from their Amazon account instead. Details: [feature-sign-in.md](docs/branches/feature-sign-in.md). The page has no AI of its own, so it makes the follow-up call Alexa would make: `do_confirmed_request` after a `done`, `cancel_request` after a `cancel`.
+Open the URL Vite prints (`http://localhost:5180` by default; set `WEB_PORT` in `web/.env` to change it) create an account (a username, the name Alexa calls you by, and a password), and send `tomorrow`, `doctor ten`, `yes`. The browser stays signed in until you sign out, so the family can sign in once for the person. The page sends the sign-in token with every tool call, and the server knows the person from it; a real Alexa+ host would pass the token it holds for the Amazon account instead. Details: [feature-sign-in.md](docs/branches/feature-sign-in.md). The page has no AI of its own, so it makes the follow-up call Alexa would make: `do_confirmed_request` after a `done`, `cancel_request` after a `cancel`.
 
 To talk instead of type, press **Speak**. Alexa learns how long each person pauses in the middle of a sentence and waits that long before she answers, instead of jumping in at every pause; the pieces said meanwhile go to the server together, with the pauses measured between them. Details: [feature-learn-pauses.md](docs/branches/feature-learn-pauses.md).
 
@@ -137,6 +145,7 @@ The server accepts browser calls from any `localhost` port. To allow another pag
 | `cancel_request`       | Drops the request in progress.                                                                         |
 | `resume_unfinished`    | At the start of a session, offers back a request left unfinished last time.                            |
 | `emergency_sos`        | Sends the person's helpers an emergency alert with where they are, after a countdown nobody stopped.   |
+| `speech_trend`         | How many questions Alexa needed per finished request, day by day, so progress is visible.             |
 
 ## Settings
 
@@ -153,6 +162,8 @@ Everything is read from environment variables. `.env.example` lists every settin
 | `SOS_COUNTDOWN_SECONDS`        | How long Alexa waits for "stop" before sending an emergency alert     |
 | `SOS_COOLDOWN_MINUTES`         | How soon the same emergency alert can be sent again                   |
 | `PAUSE_START_SECONDS`, `PAUSE_MIN_SECONDS`, `PAUSE_MAX_SECONDS` | How long Alexa waits for a new person, and the limits of what she learns |
+| `YES_NO_AFTER_TRIES`           | After this many questions about one request, Alexa guesses and asks yes or no instead |
+| `TREND_DAYS`                   | How many days `speech_trend` looks back                               |
 | `TELEGRAM_BOT_TOKEN`           | The bot that delivers emergency alerts; empty writes them to the log  |
 | `LOCATION_ENABLED`             | Whether Amazon Location adds an address to emergency alerts           |
 

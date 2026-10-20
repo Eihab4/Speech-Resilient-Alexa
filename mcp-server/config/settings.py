@@ -49,6 +49,24 @@ class MemorySettings(Section):
     summary_trigger_words: int = 400
 
 
+class SessionSettings(Section):
+    model_config = SettingsConfigDict(env_prefix="SESSION_")
+
+    ttl_hours: float = 720
+
+
+class TrendSettings(Section):
+    model_config = SettingsConfigDict(env_prefix="TREND_")
+
+    days: int = 14
+
+
+class YesNoSettings(Section):
+    model_config = SettingsConfigDict(env_prefix="YES_NO_")
+
+    after_tries: int = 3
+
+
 class SosSettings(Section):
     model_config = SettingsConfigDict(env_prefix="SOS_")
 
@@ -151,6 +169,9 @@ class Settings(BaseModel):
     llm: LlmSettings = Field(default_factory=LlmSettings)
     mock: MockSettings = Field(default_factory=MockSettings)
     memory: MemorySettings = Field(default_factory=MemorySettings)
+    session: SessionSettings = Field(default_factory=SessionSettings)
+    yes_no: YesNoSettings = Field(default_factory=YesNoSettings)
+    trend: TrendSettings = Field(default_factory=TrendSettings)
     sos: SosSettings = Field(default_factory=SosSettings)
     pause: PauseSettings = Field(default_factory=PauseSettings)
     telegram: TelegramSettings = Field(default_factory=TelegramSettings)

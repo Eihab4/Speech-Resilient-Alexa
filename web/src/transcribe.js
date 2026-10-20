@@ -1,5 +1,5 @@
 import { TRANSCRIBE_SAMPLE_RATE, TRANSCRIBE_URL } from "./config.js";
-import { TranscriptType } from "./enums.js";
+import { SocketProtocol, TranscriptType } from "./enums.js";
 
 const workletUrl = new URL("./pcm-worklet.js", import.meta.url);
 
@@ -9,7 +9,7 @@ export const isMicSupported = Boolean(navigator.mediaDevices?.getUserMedia && wi
 // Same shape as the browser listener in voice.js, so the page doesn't care which one runs.
 // Audio streams to the MCP server, which passes it to Amazon Transcribe; only text comes back.
 // onUnavailable fires when Transcribe can't be reached at all, so the page can fall back.
-export function createTranscribeListener({ onInterim, onFragment, onListeningChange, onError, onUnavailable }) {
+export function createTranscribeListener({ token, onInterim, onFragment, onListeningChange, onError, onUnavailable }) {
   let session = null;
 
   async function start() {
@@ -38,7 +38,7 @@ export function createTranscribeListener({ onInterim, onFragment, onListeningCha
     }
 
     const audio = new AudioContext();
-    const socket = new WebSocket(TRANSCRIBE_URL);
+    const socket = new WebSocket(TRANSCRIBE_URL, [SocketProtocol.BEARER, token()]);
     socket.binaryType = "arraybuffer";
     current.socket = socket;
     current.release = () => {

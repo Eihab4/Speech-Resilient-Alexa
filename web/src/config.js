@@ -12,7 +12,6 @@ export const TRANSCRIBE_URL = import.meta.env.VITE_TRANSCRIBE_URL ?? transcribeU
 
 export const SPEAK_URL = import.meta.env.VITE_SPEAK_URL ?? new URL("/speak", MCP_URL).href;
 
-// The page's account on the MCP server: the username is the person's user_id in the MCP tools.
 export const SIGN_UP_URL = new URL("/signup", MCP_URL).href;
 export const SIGN_IN_URL = new URL("/signin", MCP_URL).href;
 export const SIGN_OUT_URL = new URL("/signout", MCP_URL).href;

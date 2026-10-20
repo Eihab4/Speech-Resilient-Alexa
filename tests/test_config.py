@@ -72,6 +72,8 @@ def test_env_example_lists_every_setting():
         "llm": "LLM_",
         "memory": "MEMORY_",
         "sos": "SOS_",
+        "yes_no": "YES_NO_",
+        "trend": "TREND_",
         "pause": "PAUSE_",
         "telegram": "TELEGRAM_",
         "location": "LOCATION_",
@@ -80,6 +82,7 @@ def test_env_example_lists_every_setting():
         "groq": "GROQ_",
         "transcribe": "TRANSCRIBE_",
         "polly": "POLLY_",
+        "session": "SESSION_",
     }
     aliases = {
         ("bedrock", "region"): "AWS_REGION",

@@ -8,7 +8,7 @@ from brain.summarizer import LlmSummarizer, MockSummarizer
 from config import get_settings
 from enums import NextMove, RequestStatus
 from memory import History, Request, SqliteMemoryStore, Turn
-from support import needs_real_llm, with_client
+from support import needs_real_llm, token_for, with_client
 
 
 @pytest.fixture
@@ -23,14 +23,14 @@ def store(db_path):
     store.close()
 
 
-def call(url, tool, **arguments):
+def call(url, tool, user_id="user1", **arguments):
     async def run(client):
         return (await client.call_tool(tool, arguments)).structured_content
 
-    return with_client(url, run)
+    return with_client(url, run, token_for(url, user_id))
 
 
-def finish_a_call(url, user_id="u1"):
+def finish_a_call(url, user_id="user1"):
     call(url, "understand_speech", user_id=user_id, heard="call mom")
     pending_id = call(url, "understand_speech", user_id=user_id, heard="yes")["pending_id"]
     call(url, "do_confirmed_request", user_id=user_id, pending_id=pending_id)
@@ -54,35 +54,39 @@ def finished_request(store, conversation, lines, status=RequestStatus.DONE):
 
 
 def test_a_short_conversation_shows_the_brain_the_full_history(store):
-    conversation = store.start_conversation("acme", "u1")
+    conversation = store.start_conversation("acme", "user1")
     finished_request(store, conversation, [("call mom", "Call Mom?"), ("yes", "Okay.")])
     history = History(store, MockSummarizer(50), recent_messages=10, summary_trigger_words=400)
 
     history.maintain(conversation)
 
-    assert history.for_brain(conversation) == "person: call mom\nalexa: Call Mom?\nperson: yes\nalexa: Okay."
+    assert history.for_brain(conversation) == (
+        "person: call mom\nalexa: Call Mom?\nperson: yes\nalexa: Okay.\n(this request was done)"
+    )
     assert store.summary(conversation).text == ""
 
 
 @pytest.mark.parametrize(
     ("status", "note"),
     [
+        (RequestStatus.DONE, "(this request was done)"),
         (RequestStatus.CANCELLED, "(this request was cancelled)"),
         (RequestStatus.REPLACED, "(this request was left unfinished: the person moved to another request)"),
     ],
 )
-def test_the_history_says_how_an_unfinished_request_ended(store, status, note):
-    conversation = store.start_conversation("acme", "u1")
+def test_the_history_says_how_each_request_ended(store, status, note):
+    conversation = store.start_conversation("acme", "user1")
     finished_request(store, conversation, [("tomorrow doctor", "What time?")], status)
     finished_request(store, conversation, [("call mom", "Call Mom?"), ("yes", "Okay.")])
 
     assert History(store, MockSummarizer(50), 10, 400).for_brain(conversation) == (
-        f"person: tomorrow doctor\nalexa: What time?\n{note}\nperson: call mom\nalexa: Call Mom?\nperson: yes\nalexa: Okay."
+        f"person: tomorrow doctor\nalexa: What time?\n{note}\n"
+        "person: call mom\nalexa: Call Mom?\nperson: yes\nalexa: Okay.\n(this request was done)"
     )
 
 
 def test_the_request_in_progress_is_never_part_of_the_history(store):
-    conversation = store.start_conversation("acme", "u1")
+    conversation = store.start_conversation("acme", "user1")
     store.save_request(conversation, Request(intent="reminder"))
     store.add_turn(
         conversation,
@@ -100,7 +104,7 @@ def test_a_long_conversation_is_summarized_in_the_background_and_nothing_is_dele
         finish_a_call(url)
 
     store = SqliteMemoryStore(db_path)
-    conversation = store.conversation_for("demo", "u1")
+    conversation = store.conversation_for("demo", "user1")
     summary = wait_for_summary(store, conversation)
     history = History(store, MockSummarizer(5), recent_messages=2, summary_trigger_words=5)
     seen, turns = history.for_brain(conversation), store.turns(conversation)
@@ -114,7 +118,7 @@ def test_a_long_conversation_is_summarized_in_the_background_and_nothing_is_dele
 
 
 def test_the_summary_grows_from_the_previous_one(store):
-    conversation = store.start_conversation("acme", "u1")
+    conversation = store.start_conversation("acme", "user1")
     history = History(store, MockSummarizer(50), recent_messages=0, summary_trigger_words=3)
     finished_request(store, conversation, [("call mom", "Call Mom?"), ("yes", "Okay.")])
     history.maintain(conversation)
@@ -130,7 +134,7 @@ def test_the_summary_grows_from_the_previous_one(store):
 
 
 def test_a_failing_summarizer_leaves_memory_untouched(store):
-    conversation = store.start_conversation("acme", "u1")
+    conversation = store.start_conversation("acme", "user1")
     finished_request(store, conversation, [("call mom", "Call Mom?"), ("yes", "Okay.")])
 
     class Broken:
@@ -160,7 +164,7 @@ def test_the_real_llm_summarizes_and_uses_the_history():
 
 
 def test_the_history_tidy_up_can_be_waited_for_before_closing(store):
-    conversation = store.start_conversation("acme", "u1")
+    conversation = store.start_conversation("acme", "user1")
     finished_request(store, conversation, [("call mom", "Call Mom?"), ("yes", "Okay.")])
     history = History(store, MockSummarizer(1), recent_messages=0, summary_trigger_words=1)
 
