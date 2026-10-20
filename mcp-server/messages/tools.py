@@ -7,7 +7,10 @@ class ToolDescription(StrEnum):
         "incomplete, out of order or a correction. It remembers earlier pieces and returns what was understood, "
         "the next move (listen, ask, confirm, cancel, done or sos) and the sentence to say. "
         "sos means an emergency: wait countdown_seconds, sending anything the person says to this tool as usual, "
-        "then call emergency_sos unless a reply other than sos came back first (the person said stop)."
+        "then call emergency_sos unless a reply other than sos came back first (the person said stop). "
+        "Every reply has wait_seconds: how long this person pauses mid-sentence, learned from them. Wait that "
+        "long after they stop before calling again, join what they said meanwhile into one heard, and pass the "
+        "pauses you measured inside it as pauses_ms, so the wait keeps fitting them."
     )
     DO_CONFIRMED_REQUEST = (
         "Carry out a request after the person clearly said yes. Only works when understand_speech returned "

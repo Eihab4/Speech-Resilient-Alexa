@@ -43,7 +43,7 @@ def test_no_tool_takes_a_user_id(server):
 
     inputs = with_client(url, tool_inputs, token_for(url))
 
-    assert inputs["understand_speech"] == {"heard"}
+    assert inputs["understand_speech"] == {"heard", "pauses_ms"}
     assert all("user_id" not in fields for fields in inputs.values())
 
 

@@ -3,6 +3,7 @@ import { Speaker } from "./enums.js";
 import { sendSos, takeTurn } from "./mcp.js";
 import { Greeting, MicLabel, MuteLabel, Note, SosLabel, SpeakerName, VoiceHint, voiceError } from "./messages.js";
 import { pauseWhileSpeaking } from "./pause.js";
+import { createGatherer } from "./gather.js";
 import { createOutput } from "./output.js";
 import { createPollyVoice } from "./polly.js";
 import { readPosition } from "./position.js";
@@ -61,14 +62,15 @@ function addMessage(speaker, text, note = "") {
 let queue = Promise.resolve();
 let pending = 0;
 
-function sendTurn(words) {
+function sendTurn(words, pausesMs = []) {
   addMessage(Speaker.USER, words);
   pending += 1;
   sendButton.disabled = true;
 
   queue = queue.then(async () => {
     try {
-      const result = await takeTurn(currentToken(), words);
+      const result = await takeTurn(currentToken(), words, pausesMs);
+      gatherer.setWait(result.wait_seconds);
       addMessage(Speaker.ALEXA, result.say, result.next_move ? Note.nextMove(result.next_move) : "");
       sos.follow(result);
       voice.speak(result.say);
@@ -105,17 +107,27 @@ form.addEventListener("submit", (event) => {
   heard.focus();
 });
 
+// Spoken pieces wait for the person's own pause length; typed words go at once.
+const gatherer = createGatherer({
+  send: (words, pausesMs) => {
+    heard.value = "";
+    sendTurn(words, pausesMs);
+  },
+});
+
 let usingBrowser = false;
 const ownHints = [VoiceHint.LISTENING, VoiceHint.LISTENING_IN_BROWSER];
 
 const listenerEvents = {
   token: currentToken,
   onInterim: (text) => {
-    heard.value = text;
+    gatherer.speaking();
+    heard.value = [gatherer.pending, text].filter(Boolean).join(" ");
   },
   onFragment: (text) => {
-    heard.value = "";
-    sendTurn(text);
+    // During an emergency countdown, "stop" can't wait.
+    gatherer.piece(text, { immediate: sos.state !== "idle" });
+    heard.value = gatherer.pending;
   },
   onListeningChange: (listening) => {
     micButton.setAttribute("aria-pressed", String(listening));
@@ -172,6 +184,7 @@ setupMute();
 const people = setupPeople(document.querySelector("#people"), () => signedIn?.session);
 
 signedIn = setupSignIn({
+  onSession: (session) => gatherer.setWait(session.wait_seconds),
   onSignedIn(session) {
     const hello = Greeting.hello(session.name);
     addMessage(Speaker.ALEXA, hello);

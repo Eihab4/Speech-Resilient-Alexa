@@ -11,6 +11,7 @@ from starlette.routing import Route
 from memory import Helper, MemoryStore, Profile
 from messages import TELEGRAM_LINK, ErrorMessage
 from notify import TelegramBot, TelegramError
+from pacing import Pacing
 from people.guard import Guard, bearer
 from people.passwords import check_password, hash_password
 from people.sessions import Sessions
@@ -60,16 +61,19 @@ async def _read[T: Body](request: Request, model: type[T]) -> T:
 
 
 def create_people_routes(
-    store: MemoryStore, sessions: Sessions, guard: Guard, bot: TelegramBot | None, company_id: str
+    store: MemoryStore, sessions: Sessions, guard: Guard, bot: TelegramBot | None, company_id: str, pacing: Pacing
 ) -> list[Route]:
     """The page's own account and setup, done on a screen, not by voice: signing in, the person's profile, and
     who gets their emergency alerts. Plain routes, not MCP tools, so they stay out of the tools an AI host
     chooses from. The username is the person's user_id in the MCP tools."""
 
     def session_for(username: str) -> dict:
-        token = sessions.open(username)
+        return {"token": sessions.open(username), **who(username)}
+
+    def who(username: str) -> dict:
         profile = store.profile(company_id, username)
-        return {"token": token, "username": username, "name": profile.name if profile else username}
+        name = profile.name if profile else username
+        return {"username": username, "name": name, "wait_seconds": pacing.wait(company_id, username)}
 
     async def sign_up(request: Request) -> Response:
         body = await _read(request, SignUpBody)
@@ -104,8 +108,7 @@ def create_people_routes(
         return Response(status_code=HTTPStatus.NO_CONTENT)
 
     async def me(request: Request, username: str) -> Response:
-        profile = store.profile(company_id, username)
-        return JSONResponse({"username": username, "name": profile.name if profile else username})
+        return JSONResponse(who(username))
 
     async def bot_name() -> str | None:
         if bot is None:

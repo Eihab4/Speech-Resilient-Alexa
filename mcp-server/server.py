@@ -15,6 +15,7 @@ from location import create_geocoder
 from memory import History, SqliteMemoryStore
 from messages import ToolDescription
 from notify import HelperLinker, create_bot, create_notifier
+from pacing import Pacing
 from people import Guard, Sessions, SessionVerifier, create_people_routes
 from speech import PollySynthesizer, create_speak_endpoint
 from tools.cancel_request import cancel_request as cancel
@@ -53,6 +54,7 @@ async def resources(server: FastMCP):
         "history": history,
         "notifier": create_notifier(bot),
         "geocoder": create_geocoder(settings),
+        "pacing": Pacing(store, settings.pause),
     }
     stop.set()
     # A summary may still be being written; closing the store under it can crash SQLite.
@@ -89,7 +91,7 @@ def is_allowed_origin(origin: str | None) -> bool:
 
 
 @mcp.tool(description=ToolDescription.UNDERSTAND_SPEECH)
-def understand_speech(heard: str, ctx: Context) -> dict:
+def understand_speech(heard: str, ctx: Context, pauses_ms: list[int] | None = None) -> dict:
     r = ctx.lifespan_context
     return understand(
         r["brain"],
@@ -99,6 +101,8 @@ def understand_speech(heard: str, ctx: Context) -> dict:
         caller(),
         heard,
         settings.sos.countdown_seconds,
+        r["pacing"],
+        pauses_ms,
     )
 
 
@@ -142,7 +146,9 @@ def create_app():
     app.router.routes.append(
         Route(settings.polly.path, guard.require(lambda request, _: speak(request)), methods=["POST"])
     )
-    app.router.routes.extend(create_people_routes(people, sessions, guard, bot, settings.memory.company_id))
+    app.router.routes.extend(
+        create_people_routes(people, sessions, guard, bot, settings.memory.company_id, Pacing(people, settings.pause))
+    )
     return app
 
 
