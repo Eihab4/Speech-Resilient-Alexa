@@ -1,11 +1,13 @@
 import pytest
 
+from brain.interpreter import LlmBrain
 from brain.schemas import BrainResult
 from brain.summarizer import MockSummarizer
 from config.settings import PauseSettings
 from enums import NextMove
 from memory import History, SqliteMemoryStore
 from pacing import Pacing
+from support import CapturingClient
 from tools.do_confirmed_request import do_confirmed_request
 from tools.understand_speech import understand
 
@@ -24,8 +26,8 @@ class ScriptedBrain:
         self.answers = list(answers)
         self.calls = []
 
-    def interpret(self, fragments, history="", person=""):
-        self.calls.append(fragments)
+    def interpret(self, fragments, history="", person="", question=""):
+        self.calls.append((fragments, question))
         return self.answers.pop(0)
 
 
@@ -51,6 +53,27 @@ def test_every_reply_counts_how_often_alexa_had_to_ask(store):
     tries = [hear(store, brain, heard)["tries"] for heard in ["call", "c", "cuh", "mom"]]
 
     assert tries == [0, 1, 2, 2]
+
+
+def test_the_brain_is_told_what_alexa_last_said_about_the_request(store):
+    brain = ScriptedBrain(
+        ask("Who do you want to call?"),
+        BrainResult(intent="call", details={"who": "mom"}, next_move=NextMove.CONFIRM, say="Call Mom?"),
+    )
+
+    hear(store, brain, "call")
+    hear(store, brain, "mom")
+
+    assert brain.calls == [(["call"], ""), (["call", "mom"], "Who do you want to call?")]
+
+
+def test_the_question_reaches_the_model(store):
+    client = CapturingClient()
+
+    hear(store, LlmBrain(client), "call")
+
+    assert client.user["question"] == ""
+    assert "question" in client.system
 
 
 def test_a_new_request_starts_counting_again(store):

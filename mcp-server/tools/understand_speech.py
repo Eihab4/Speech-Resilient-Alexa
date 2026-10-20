@@ -23,9 +23,10 @@ class Moment:
     earlier: list[Turn]  # the open request's pieces so far
     person: str  # the name the person signed in with, for the brain to use
     tries: int  # how many times Alexa has already asked about this request
+    question: str  # what Alexa last said about this request, so "mom" or "yes" can be read as an answer
 
     def ask_brain(self, pieces: list[str]) -> BrainResult:
-        return self.brain.interpret(pieces, self.history.for_brain(self.conversation), self.person)
+        return self.brain.interpret(pieces, self.history.for_brain(self.conversation), self.person, self.question)
 
 
 @dataclass
@@ -69,6 +70,7 @@ def understand(
         earlier=earlier,
         person=profile.name if profile else "",
         tries=sum(turn.next_move == NextMove.ASK for turn in earlier),
+        question=earlier[-1].say if earlier else "",
     )
 
     # Checked before the brain, so an emergency is caught even when the LLM is down or slow.

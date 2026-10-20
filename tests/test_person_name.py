@@ -1,5 +1,3 @@
-import json
-
 import pytest
 
 from brain.interpreter import LlmBrain
@@ -10,6 +8,7 @@ from enums import NextMove
 from memory import History, Profile, SqliteMemoryStore
 from messages import Prompt
 from pacing import Pacing
+from support import CapturingClient
 from tools.understand_speech import understand
 
 pytestmark = pytest.mark.usefixtures("history_in_line")
@@ -26,15 +25,9 @@ class RecordingBrain:
     def __init__(self):
         self.people = []
 
-    def interpret(self, fragments, history="", person=""):
+    def interpret(self, fragments, history="", person="", question=""):
         self.people.append(person)
         return BrainResult(next_move=NextMove.LISTEN, say="Mm-hm.")
-
-
-class CapturingClient:
-    def complete(self, system, user, schema=None):
-        self.system, self.user = system, json.loads(user)
-        return BrainResult(next_move=NextMove.LISTEN, say="Mm-hm.").model_dump_json()
 
 
 def hear(store, brain, heard):

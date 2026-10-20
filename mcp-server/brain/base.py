@@ -4,4 +4,6 @@ from brain.schemas import BrainResult
 
 
 class Brain(Protocol):
-    def interpret(self, fragments: list[str], history: str = "", person: str = "") -> BrainResult: ...
+    def interpret(
+        self, fragments: list[str], history: str = "", person: str = "", question: str = ""
+    ) -> BrainResult: ...
