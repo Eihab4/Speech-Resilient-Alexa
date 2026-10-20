@@ -161,6 +161,7 @@ Everything is read from environment variables. `.env.example` lists every settin
 | `SOS_COUNTDOWN_SECONDS`        | How long Alexa waits for "stop" before sending an emergency alert     |
 | `SOS_COOLDOWN_MINUTES`         | How soon the same emergency alert can be sent again                   |
 | `PAUSE_START_SECONDS`, `PAUSE_MIN_SECONDS`, `PAUSE_MAX_SECONDS` | How long Alexa waits for a new person, and the limits of what she learns |
+| `YES_NO_AFTER_TRIES`           | After this many questions about one request, Alexa guesses and asks yes or no instead |
 | `TELEGRAM_BOT_TOKEN`           | The bot that delivers emergency alerts; empty writes them to the log  |
 | `LOCATION_ENABLED`             | Whether Amazon Location adds an address to emergency alerts           |
 
