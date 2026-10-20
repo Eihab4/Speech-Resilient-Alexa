@@ -2,7 +2,7 @@ from dataclasses import dataclass
 
 from brain.base import Brain
 from brain.schemas import BrainResult
-from enums import NextMove, RequestStatus
+from enums import AskMode, NextMove, RequestStatus
 from memory import History, MemoryStore, Request, Turn
 from messages import NO_WORDS, YES_WORDS, Reply
 from pacing import Pacing
@@ -22,9 +22,14 @@ class Moment:
     request: Request  # the open request, or a new empty one
     earlier: list[Turn]  # the open request's pieces so far
     person: str  # the name the person signed in with, for the brain to use
+    tries: int  # how many times Alexa has already asked about this request
+    question: str  # what Alexa last said about this request, so "mom" or "yes" can be read as an answer
+    mode: AskMode  # yes_no once asking has failed a few times: the brain guesses and asks "Mom?"
 
     def ask_brain(self, pieces: list[str]) -> BrainResult:
-        return self.brain.interpret(pieces, self.history.for_brain(self.conversation), self.person)
+        return self.brain.interpret(
+            pieces, self.history.for_brain(self.conversation), self.person, self.question, self.mode
+        )
 
 
 @dataclass
@@ -47,6 +52,7 @@ def understand(
     countdown_seconds: int,
     pacing: Pacing,
     pauses_ms: list[int] | None = None,
+    yes_no_after_tries: int = 3,
 ) -> dict:
     """pauses_ms: the pauses the host measured inside this piece, between the bits it joined together."""
     fragment = heard.strip()
@@ -56,6 +62,7 @@ def understand(
     conversation = store.conversation_for(company_id, user_id)
     request = store.pending_request(conversation) or Request()
     profile = store.profile(company_id, user_id)
+    earlier = store.turns(conversation, request.id)
     now = Moment(
         brain=brain,
         store=store,
@@ -64,9 +71,13 @@ def understand(
         fragment=fragment,
         last=store.last_turn(conversation),
         request=request,
-        earlier=store.turns(conversation, request.id),
+        earlier=earlier,
         person=profile.name if profile else "",
+        tries=sum(turn.next_move == NextMove.ASK for turn in earlier),
+        question=earlier[-1].say if earlier else "",
+        mode=AskMode.OPEN,
     )
+    now.mode = AskMode.YES_NO if now.tries >= yes_no_after_tries else AskMode.OPEN
 
     # Checked before the brain, so an emergency is caught even when the LLM is down or slow.
     if (emergency := _emergency(now, countdown_seconds)) is not None:
@@ -82,7 +93,8 @@ def understand(
         now.last is not None and now.last.next_move == NextMove.LISTEN and now.last.request_id == step.request_id
     )
     wait = pacing.learn(company_id, user_id, pauses_ms or [], answered_too_early)
-    return {**step.result.model_dump(), "pending_id": step.request.id, "wait_seconds": wait}
+    tries = now.tries + (step.result.next_move == NextMove.ASK)
+    return {**step.result.model_dump(), "pending_id": step.request.id, "wait_seconds": wait, "tries": tries}
 
 
 def _emergency(now: Moment, countdown_seconds: int) -> dict | None:
@@ -173,6 +185,8 @@ def _interpret(now: Moment) -> Step:
             say=result.say,
         )
         return Step(request=now.request, result=switch, request_id=None, heard=now.fragment)
+    if result.next_move == NextMove.CANCEL:
+        return Step(request=now.request, result=result, request_id=now.request.id, heard=now.fragment)
     request = now.request.model_copy(update={"intent": result.intent, "details": result.details})
     return Step(request=request, result=result, request_id=request.id, heard=now.fragment)
 

@@ -6,7 +6,7 @@ from config.settings import PauseSettings
 from enums import NextMove
 from memory import History, SqliteMemoryStore
 from pacing import Pacing, wait_from_pauses
-from support import base_url, http, sign_up, with_client
+from support import base_url, http, sign_up, token_for, with_client
 from tools.understand_speech import understand
 
 SETTINGS = PauseSettings(
@@ -47,7 +47,7 @@ def tidy_history_in_line(monkeypatch):
 class ScriptedBrain:
     """Answers "go on" until the request has a who, then asks to confirm."""
 
-    def interpret(self, fragments, history="", person=""):
+    def interpret(self, fragments, history="", person="", question="", mode=None):
         if "mom" in " ".join(fragments):
             return BrainResult(intent="call", details={"who": "mom"}, next_move=NextMove.CONFIRM, say="Call Mom?")
         return BrainResult(next_move=NextMove.LISTEN, say="Mm-hm, go on.")
@@ -141,11 +141,11 @@ def test_every_reply_over_mcp_says_how_long_to_wait(server):
 
     async def turn(client):
         result = await client.call_tool(
-            "understand_speech", {"user_id": "u1", "heard": "call mom", "pauses_ms": [2000, 2250, 2500, 2750, 3000]}
+            "understand_speech", {"heard": "call mom", "pauses_ms": [2000, 2250, 2500, 2750, 3000]}
         )
         return result.structured_content
 
-    assert with_client(url, turn)["wait_seconds"] == 3.3
+    assert with_client(url, turn, token_for(url))["wait_seconds"] == 3.3
 
 
 def test_signing_in_tells_the_page_the_persons_wait(server):

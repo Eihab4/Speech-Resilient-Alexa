@@ -1,5 +1,3 @@
-import json
-
 import pytest
 
 from brain.interpreter import LlmBrain
@@ -10,25 +8,10 @@ from enums import NextMove
 from memory import History, Profile, SqliteMemoryStore
 from messages import Prompt
 from pacing import Pacing
+from support import CapturingClient
 from tools.understand_speech import understand
 
-
-class RunNow:
-    def __init__(self, target, args=(), daemon=None):
-        self.target, self.args = target, args
-
-    def start(self):
-        self.target(*self.args)
-
-    def join(self, timeout=None):
-        pass
-
-
-@pytest.fixture(autouse=True)
-def tidy_history_in_line(monkeypatch):
-    # understand() tidies the history in a background thread. Run it in line, or the store below can be
-    # closed while that thread is still reading it, and SQLite crashes the whole test run.
-    monkeypatch.setattr("memory.history.Thread", RunNow)
+pytestmark = pytest.mark.usefixtures("history_in_line")
 
 
 @pytest.fixture
@@ -42,26 +25,20 @@ class RecordingBrain:
     def __init__(self):
         self.people = []
 
-    def interpret(self, fragments, history="", person=""):
+    def interpret(self, fragments, history="", person="", question="", mode=None):
         self.people.append(person)
         return BrainResult(next_move=NextMove.LISTEN, say="Mm-hm.")
-
-
-class CapturingClient:
-    def complete(self, system, user, schema=None):
-        self.system, self.user = system, json.loads(user)
-        return BrainResult(next_move=NextMove.LISTEN, say="Mm-hm.").model_dump_json()
 
 
 def hear(store, brain, heard):
     history = History(store, MockSummarizer(400), recent_messages=10, summary_trigger_words=400)
     return understand(
-        brain, store, history, "demo", "u1", heard, countdown_seconds=5, pacing=Pacing(store, PauseSettings())
+        brain, store, history, "demo", "user1", heard, countdown_seconds=5, pacing=Pacing(store, PauseSettings())
     )
 
 
 def test_the_brain_gets_the_name_the_person_signed_in_with(store):
-    store.save_profile("demo", "u1", Profile(name="Ahmed"))
+    store.save_profile("demo", "user1", Profile(name="Ahmed"))
     brain = RecordingBrain()
 
     hear(store, brain, "call mom")

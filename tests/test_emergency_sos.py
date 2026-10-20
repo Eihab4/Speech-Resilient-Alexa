@@ -5,7 +5,7 @@ from enums import AlertStatus, NextMove, RequestStatus
 from location import NoGeocoder
 from memory import Helper, Profile, SqliteMemoryStore
 from messages import Reply
-from support import with_client
+from support import token_for, with_client
 from tools.emergency_sos import asks_for_sos, emergency_sos, says_stop
 
 CAIRO = {"latitude": 30.0444, "longitude": 31.2357}
@@ -23,25 +23,27 @@ def store(db_path):
     store.close()
 
 
-def call(url, tool, **arguments):
+def call(url, tool, user_id="user1", **arguments):
     async def run(client):
         return (await client.call_tool(tool, arguments)).structured_content
 
-    return with_client(url, run)
+    return with_client(url, run, token_for(url, user_id))
 
 
 def say(url, heard):
-    return call(url, "understand_speech", user_id="u1", heard=heard)
+    return call(url, "understand_speech", user_id="user1", heard=heard)
 
 
 def sos(url, **position):
-    return call(url, "emergency_sos", user_id="u1", **position)
+    return call(url, "emergency_sos", user_id="user1", **position)
 
 
-def set_up(store, *helpers, name="Ahmed", home_address=None):
-    store.save_profile("demo", "u1", Profile(name=name, home_address=home_address))
+def set_up(store, *helpers, url=None, name="Ahmed", home_address=None):
+    if url:
+        token_for(url)
+    store.save_profile("demo", "user1", Profile(name=name, home_address=home_address))
     for helper in helpers:
-        store.add_helper("demo", "u1", helper)
+        store.add_helper("demo", "user1", helper)
 
 
 class FailingNotifier:
@@ -89,9 +91,9 @@ def test_sos_works_while_the_brain_is_down(server):
     url = server(LLM_PROVIDER="openrouter", OPENROUTER_API_KEY="invalid", OPENROUTER_BASE_URL="http://127.0.0.1:9/v1")
 
     async def broken_brain(client):
-        return await client.call_tool("understand_speech", {"user_id": "u1", "heard": "call mom"}, raise_on_error=False)
+        return await client.call_tool("understand_speech", {"heard": "call mom"}, raise_on_error=False)
 
-    assert with_client(url, broken_brain).is_error
+    assert with_client(url, broken_brain, token_for(url)).is_error
     assert say(url, "I fell")["next_move"] == NextMove.SOS
 
 
@@ -102,7 +104,7 @@ def test_stop_during_the_countdown_goes_back_to_the_open_request(server, db_path
 
     stopped = say(url, "I'm okay")
     store = SqliteMemoryStore(db_path)
-    conversation = store.conversation_for("demo", "u1")
+    conversation = store.conversation_for("demo", "user1")
     request, pieces = store.pending_request(conversation), store.turns(conversation, question["pending_id"])
     store.close()
 
@@ -141,12 +143,13 @@ def test_the_alert_reaches_every_linked_helper_with_the_map(server, store):
         Helper(name="Sara", telegram_chat_id="1"),
         Helper(name="Omar", telegram_chat_id="2"),
         Helper(name="Mona"),
+        url=url,
     )
     say(url, "I fell")
     say(url, "please hurry")
 
     result = sos(url, **CAIRO)
-    [alert] = store.alerts("demo", "u1")
+    [alert] = store.alerts("demo", "user1")
 
     assert result == {"sent": True, "sent_to": ["Sara", "Omar"], "say": Reply.SOS_SENT.format(who="Sara and Omar")}
     assert alert.status == AlertStatus.SENT
@@ -157,7 +160,7 @@ def test_the_alert_reaches_every_linked_helper_with_the_map(server, store):
 
 def test_after_the_alert_the_next_words_are_heard_as_usual(server, store):
     url = server()
-    set_up(store, Helper(name="Sara", telegram_chat_id="1"))
+    set_up(store, Helper(name="Sara", telegram_chat_id="1"), url=url)
     say(url, "I fell")
     sos(url, **CAIRO)
 
@@ -166,11 +169,11 @@ def test_after_the_alert_the_next_words_are_heard_as_usual(server, store):
 
 def test_without_a_location_the_alert_gives_the_home_address(server, store):
     url = server()
-    set_up(store, Helper(name="Sara", telegram_chat_id="1"), home_address="12 Tahrir St, Cairo")
+    set_up(store, Helper(name="Sara", telegram_chat_id="1"), home_address="12 Tahrir St, Cairo", url=url)
     say(url, "emergency")
 
     result = sos(url)
-    [alert] = store.alerts("demo", "u1")
+    [alert] = store.alerts("demo", "user1")
 
     assert result["say"] == Reply.SOS_SENT_NO_PLACE.format(who="Sara")
     assert "Home address: 12 Tahrir St, Cairo" in alert.text
@@ -178,17 +181,17 @@ def test_without_a_location_the_alert_gives_the_home_address(server, store):
 
 def test_with_no_place_at_all_the_alert_says_so(server, store):
     url = server()
-    set_up(store, Helper(name="Sara", telegram_chat_id="1"))
+    set_up(store, Helper(name="Sara", telegram_chat_id="1"), url=url)
     say(url, "emergency")
 
     sos(url)
 
-    assert "Location unknown." in store.alerts("demo", "u1")[0].text
+    assert "Location unknown." in store.alerts("demo", "user1")[0].text
 
 
 def test_the_same_alert_is_not_sent_twice_in_a_row(server, store):
     url = server(SOS_COOLDOWN_MINUTES="2")
-    set_up(store, Helper(name="Sara", telegram_chat_id="1"))
+    set_up(store, Helper(name="Sara", telegram_chat_id="1"), url=url)
     say(url, "I fell")
     sos(url, **CAIRO)
     say(url, "I fell")
@@ -196,25 +199,25 @@ def test_the_same_alert_is_not_sent_twice_in_a_row(server, store):
     again = sos(url, **CAIRO)
 
     assert again == {"sent": False, "sent_to": [], "say": Reply.SOS_ALREADY_SENT}
-    assert len(store.alerts("demo", "u1")) == 1
+    assert len(store.alerts("demo", "user1")) == 1
 
 
 def test_with_no_linked_helper_alexa_says_so(server, store):
     url = server()
-    set_up(store, Helper(name="Mona"))
+    set_up(store, Helper(name="Mona"), url=url)
     say(url, "I fell")
 
     result = sos(url, **CAIRO)
 
     assert result == {"sent": False, "sent_to": [], "say": Reply.SOS_NO_HELPER}
-    assert store.alerts("demo", "u1")[0].status == AlertStatus.NO_HELPER
+    assert store.alerts("demo", "user1")[0].status == AlertStatus.NO_HELPER
 
 
 def test_one_failing_helper_does_not_stop_the_others(store):
     set_up(store, Helper(name="Sara", telegram_chat_id="1"), Helper(name="Omar", telegram_chat_id="2"))
     notifier = FailingNotifier(failing={"Sara"})
 
-    result = emergency_sos(store, notifier, NoGeocoder(), SosSettings(), "demo", "u1", **CAIRO)
+    result = emergency_sos(store, notifier, NoGeocoder(), SosSettings(), "demo", "user1", **CAIRO)
 
     assert result["sent_to"] == ["Omar"]
     assert notifier.reached == ["Omar"]
@@ -223,17 +226,19 @@ def test_one_failing_helper_does_not_stop_the_others(store):
 def test_when_every_helper_fails_alexa_says_so(store):
     set_up(store, Helper(name="Sara", telegram_chat_id="1"))
 
-    result = emergency_sos(store, FailingNotifier(failing={"Sara"}), NoGeocoder(), SosSettings(), "demo", "u1", **CAIRO)
+    result = emergency_sos(
+        store, FailingNotifier(failing={"Sara"}), NoGeocoder(), SosSettings(), "demo", "user1", **CAIRO
+    )
 
     assert result == {"sent": False, "sent_to": [], "say": Reply.SOS_FAILED}
-    assert store.alerts("demo", "u1")[0].status == AlertStatus.FAILED
+    assert store.alerts("demo", "user1")[0].status == AlertStatus.FAILED
 
 
 def test_a_failed_alert_can_be_tried_again_at_once(store):
     set_up(store, Helper(name="Sara", telegram_chat_id="1"))
-    emergency_sos(store, FailingNotifier(failing={"Sara"}), NoGeocoder(), SosSettings(), "demo", "u1", **CAIRO)
+    emergency_sos(store, FailingNotifier(failing={"Sara"}), NoGeocoder(), SosSettings(), "demo", "user1", **CAIRO)
 
-    retry = emergency_sos(store, FailingNotifier(failing=set()), NoGeocoder(), SosSettings(), "demo", "u1", **CAIRO)
+    retry = emergency_sos(store, FailingNotifier(failing=set()), NoGeocoder(), SosSettings(), "demo", "user1", **CAIRO)
 
     assert retry["sent_to"] == ["Sara"]
 
@@ -251,8 +256,8 @@ def test_the_alert_gives_the_address_amazon_location_found(store):
     set_up(store, Helper(name="Sara", telegram_chat_id="1"))
     geocoder = FakeGeocoder("Tahrir Square, Cairo, Egypt")
 
-    emergency_sos(store, FailingNotifier(failing=set()), geocoder, SosSettings(), "demo", "u1", **CAIRO)
-    [alert] = store.alerts("demo", "u1")
+    emergency_sos(store, FailingNotifier(failing=set()), geocoder, SosSettings(), "demo", "user1", **CAIRO)
+    [alert] = store.alerts("demo", "user1")
 
     assert "Where: Tahrir Square, Cairo, Egypt\nMap: https://maps.google.com/?q=30.0444,31.2357" in alert.text
     assert alert.address == "Tahrir Square, Cairo, Egypt"
@@ -262,9 +267,9 @@ def test_without_an_address_the_alert_still_goes_with_the_map(store):
     set_up(store, Helper(name="Sara", telegram_chat_id="1"))
 
     result = emergency_sos(
-        store, FailingNotifier(failing=set()), FakeGeocoder(None), SosSettings(), "demo", "u1", **CAIRO
+        store, FailingNotifier(failing=set()), FakeGeocoder(None), SosSettings(), "demo", "user1", **CAIRO
     )
-    [alert] = store.alerts("demo", "u1")
+    [alert] = store.alerts("demo", "user1")
 
     assert result["sent_to"] == ["Sara"]
     assert "Where:" not in alert.text
@@ -275,6 +280,6 @@ def test_no_position_means_no_address_lookup(store):
     set_up(store, Helper(name="Sara", telegram_chat_id="1"))
     geocoder = FakeGeocoder("anywhere")
 
-    emergency_sos(store, FailingNotifier(failing=set()), geocoder, SosSettings(), "demo", "u1")
+    emergency_sos(store, FailingNotifier(failing=set()), geocoder, SosSettings(), "demo", "user1")
 
     assert geocoder.asked == []

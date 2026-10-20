@@ -1,6 +1,11 @@
 import pytest
 
-from support import start_server
+from support import RunNow, start_server
+
+
+@pytest.fixture
+def history_in_line(monkeypatch):
+    monkeypatch.setattr("memory.history.Thread", RunNow)
 
 
 @pytest.fixture

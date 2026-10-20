@@ -6,17 +6,18 @@
 - [x] **Eihab — Voice output (text → speech):** Alexa reads every reply aloud with Amazon Polly (neural voice, Joanna by default) through the server's `POST /speak`, so the AWS keys never reach the browser. The browser's voice is the fallback. The microphone pauses while she talks, and **Mute Alexa** cuts her off.
 - [x] **Rana — Learn each person's pauses:** Alexa waits each person's own mid-sentence pause length before answering, instead of jumping in at every pause. Learned from their measured pauses (outliers dropped, 75th percentile) and from her early answers; returned as `wait_seconds`. Details: [feature-learn-pauses.md](branches/feature-learn-pauses.md).
 - [x] **Eihab — SOS by voice waits too:** a piece with an SOS phrase goes to the server at once instead of waiting the person's pause length (`../web/src/words.js`, the same phrases as the server; a test keeps the two lists equal).
-- [ ] **Polly retry:** once Polly fails, the page stays on the robotic browser voice until it's reloaded. Try Polly again on the next reply instead (`../web/src/output.js`).
+- [x] **Eihab — Polly retry:** Polly is tried first on every reply; the browser voice only covers the reply Polly missed (`../web/src/output.js`).
 - [ ] **Rana — `learn_my_speech`:** keep a word list per person in SQLite (names from contacts, and corrections like "no, *Sara*"). Push it to a Transcribe custom vocabulary so Alexa learns their words. An update takes a few minutes to be ready, so keep using the old list until then.
 
 ## Memory
 
+- [x] **Eihab — The tools know the person from the sign-in:** every MCP call, `/speak` and `/transcribe` carry the session token, and the server takes the person from it, never from a `user_id` in the input. Sessions expire after `SESSION_TTL_HOURS`. Details: [feature-mcp-auth.md](branches/feature-mcp-auth.md).
 - [x] **Rana — New request in the middle of one:** when the person starts something different while a request is open, Alexa asks before switching ("Should I stop the doctor reminder and call Mom instead?"), so each request stays its own row. Details: [feature-new-request.md](branches/feature-new-request.md).
 - [ ] **Rana — Usual requests (after the task above):** Alexa counts what the person asks for most and uses it to understand broken speech faster ("c… mom" → "Call Mom?"). Still asks for yes. Details: [feature-usual-requests.md](branches/feature-usual-requests.md).
 - [x] **Rana — Sign-in:** a username and password per person, so two people with the same name never share a memory; Alexa calls the person by the name on their account. Details: [feature-sign-in.md](branches/feature-sign-in.md).
 - [x] **Stability:** one lock on the shared SQLite connection, and the server waits for the history tidy-up before closing (both could crash it).
-- [ ] **Bug — the brain treats a finished request as open:** the history notes how a cancelled or replaced request ended, but not a finished one, so after "call mom" is done the brain may ask "Should I stop the doctor reminder…?". Add "(this request was done)" in `REQUEST_ENDINGS` (`mcp-server/messages/prompts.py`).
-- [ ] **Bug — `cancel` saved as an intent:** when the person cancels, the request is saved with `intent = "cancel"`, which isn't a valid intent (only reminder, message, call).
+- [x] **Eihab — Bug — the brain treats a finished request as open:** the history now says "(this request was done)" after a finished request, like it already did for cancelled and replaced ones.
+- [x] **Eihab — Bug — `cancel` saved as an intent:** a request can only hold a real intent (`Intent | None` on the model), and a cancel keeps the intent the request had.
 
 ## New tools
 
@@ -34,11 +35,11 @@ Next to each tool is the service it uses. **Polly** and **the brain** (the LLM) 
 ### Do first
 
 - [ ] **`ask_for_help`** — SNS, memory: when the person says "help", or Alexa still hasn't understood after a few tries, the caregiver gets what was understood so far ("Dad is trying to set a reminder for the doctor tomorrow, the time is unclear"). In the demo, a teammate's phone gets the SMS live.
-- [ ] **`speech_trend`** — memory only: how many tries Alexa needed per request, day by day ("4 tries on day one, 1 now"). Goes with **Usual requests** in Memory: together they show Alexa learns the person over time.
+- [x] **Eihab — `speech_trend`** — memory only: how many questions Alexa needed per finished request, day by day, for the last `TREND_DAYS` days, with a sentence that compares the first day to now. Details: [feature-speech-trend.md](branches/feature-speech-trend.md).
 - [ ] **`speech_practice`** — Transcribe, memory: daily speech exercises. Alexa gives words to say, scores each one from Transcribe's confidence per word, and tracks progress with `speech_trend`. For people recovering after a stroke. Today the server only passes the text on, so `transcription/stream.py` must also pass the confidence.
 - [ ] **`finish_my_sentence`** — memory, brain: the person says "call…" and stops. Alexa offers the likely endings: "Mom? Sara? The doctor?", like phone keyboard suggestions, but spoken. The suggestions come from **Usual requests**, so do that first.
 - [ ] **`notice_frustration`** — Comprehend: when the person repeats themselves or says "no no no", Alexa calms things down ("Take your time, I'm listening") and switches to yes/no questions or offers help. Comprehend reads the mood of the text and supports Arabic.
-- [ ] **`yes_no_mode`** — memory only: after a few failed tries, Alexa stops asking to repeat and asks yes/no questions instead ("Do you want to call someone?" "Mom?"). A change in `understand_speech`, not a new tool.
+- [x] **Eihab — `yes_no_mode`** — memory only: after `YES_NO_AFTER_TRIES` questions about one request, Alexa stops asking the person to repeat and guesses instead ("Mom?"); a yes accepts the guess. Every reply carries `tries`, which `speech_trend` can read. Details: [feature-yes-no-mode.md](branches/feature-yes-no-mode.md).
 - [ ] **`my_phrases`** — Polly, memory: one word says a saved sentence. "doctor" → "I'm not feeling well and I need a doctor."
 - [ ] **`translate_for_me`** — Translate, Polly: the person speaks Arabic, and Alexa says it in English (for a doctor, for example).
 
