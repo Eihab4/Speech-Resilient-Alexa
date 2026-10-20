@@ -6,7 +6,6 @@ from enums import RequestStatus
 
 PROMPTS_DIR = Path(__file__).parent / "prompts"
 
-# Shown to the brain after each request in the history, so it never takes a finished one for an open one.
 REQUEST_ENDINGS = {
     RequestStatus.DONE: "(this request was done)",
     RequestStatus.CANCELLED: "(this request was cancelled)",
