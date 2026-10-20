@@ -3,6 +3,7 @@ import { json, signedIn } from "./http.js";
 
 export function createPollyVoice(token) {
   let playing = null;
+  let stopped = false;
 
   async function play(url) {
     playing = new Audio(url);
@@ -16,17 +17,19 @@ export function createPollyVoice(token) {
 
   return {
     async speak(text) {
+      stopped = false;
       const response = await fetch(SPEAK_URL, signedIn(token(), json("POST", { text })));
       if (!response.ok) throw new Error(String(response.status));
       const url = URL.createObjectURL(await response.blob());
       try {
-        await play(url);
+        if (!stopped) await play(url);
       } finally {
         URL.revokeObjectURL(url);
         playing = null;
       }
     },
     stop() {
+      stopped = true;
       playing?.pause();
     },
   };
