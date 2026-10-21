@@ -231,6 +231,10 @@ The [official rules](https://aws-agent-hackathon.devpost.com/rules) say the demo
 >
 > “tomorrow at ten.”
 
+**Say:**
+
+> “Alexa learns how long I need between phrases and adjusts her wait, so she doesn’t rush me.”
+
 Answer any missing question. When Alexa repeats the reminder, say:
 
 > “Yes.”
