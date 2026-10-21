@@ -1,12 +1,12 @@
 import string
 
-
 YES_WORDS = frozenset(
     {"yes", "yeah", "yep", "yup", "mm-hm", "mhm", "right", "sure", "okay", "ok", "that's it", "do it"}
 )
 REPEATED_YES_WORDS = frozenset(
     {"yes", "yeah", "yep", "yup", "mm-hm", "mhm", "right", "sure", "okay", "ok"}
 )
+RESPONSE_FILLERS = frozenset({"um", "uh", "erm", "er", "hmm"})
 NO_WORDS = frozenset({"no", "nope", "no no", "nah", "wrong"})
 PUNCTUATION_TO_SPACE = str.maketrans(
     {character: " " for character in string.punctuation.replace("'", "").replace("-", "") + "…،؟"}

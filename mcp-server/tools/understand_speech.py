@@ -2,9 +2,9 @@ from dataclasses import dataclass
 
 from brain.base import Brain
 from brain.schemas import BrainResult
-from enums import AskMode, NextMove, RequestStatus
+from enums import AskMode, Intent, NextMove, RequestStatus
 from memory import History, MemoryStore, Request, Turn
-from messages import NO_WORDS, PUNCTUATION_TO_SPACE, REPEATED_YES_WORDS, YES_WORDS, Reply
+from messages import NO_WORDS, PUNCTUATION_TO_SPACE, REPEATED_YES_WORDS, RESPONSE_FILLERS, YES_WORDS, Reply
 from pacing import Pacing
 from tools.ask_for_help import TRIES, asks_for_help
 from tools.emergency_sos import asks_for_sos, says_stop
@@ -139,8 +139,9 @@ def _stop_countdown(now: Moment) -> dict:
 def _decide(now: Moment) -> Step:
     """A yes or a no to Alexa's last question is handled here; everything else goes to the brain."""
     words = " ".join(now.fragment.lower().translate(PUNCTUATION_TO_SPACE).split())
-    said_yes = words in YES_WORDS or _is_repeated_yes(words)
-    said_no = words in NO_WORDS
+    response = _without_fillers(words)
+    said_yes = response in YES_WORDS or _is_repeated_yes(response)
+    said_no = response in NO_WORDS
     set_aside = _set_aside_piece(now.last) if now.earlier else None
     awaiting_yes = bool(now.earlier) and now.earlier[-1].next_move == NextMove.CONFIRM
 
@@ -159,6 +160,15 @@ def _is_repeated_yes(words: str) -> bool:
     """Accept speech recognition repeating a short affirmative (for example, "yes, yes")."""
     pieces = words.split()
     return len(pieces) > 1 and all(piece in REPEATED_YES_WORDS for piece in pieces)
+
+
+def _without_fillers(words: str) -> str:
+    pieces = words.split()
+    while pieces and pieces[0] in RESPONSE_FILLERS:
+        pieces.pop(0)
+    while pieces and pieces[-1] in RESPONSE_FILLERS:
+        pieces.pop()
+    return " ".join(pieces)
 
 
 def _switch_to(now: Moment, piece: str) -> Step:
@@ -197,20 +207,78 @@ def _ask_what_to_change(now: Moment) -> Step:
 def _interpret(now: Moment) -> Step:
     """The brain reads every piece so far. If it hears a new request while one is open, Alexa asks before switching."""
     result = now.ask_brain([turn.heard for turn in now.earlier] + [now.fragment])
-    if result.new_request and now.request.intent:
+    # Only _confirm may mark a request done. A model can mistake a hesitant or ambiguous reply for "yes".
+    if result.next_move == NextMove.DONE:
+        result = result.model_copy(
+            update={"next_move": NextMove.CONFIRM, "say": _confirmation_question(result.intent, result.details)}
+        )
+
+    changed_intent = now.request.intent is not None and result.intent is not None and result.intent != now.request.intent
+    if now.request.intent and (result.new_request or changed_intent):
+        say = result.say.strip()
+        if changed_intent:
+            say = _switch_question(now.request.intent, now.request.details, result.intent, result.details)
+        elif not say:
+            say = Reply.SWITCH_GENERIC
         # The switch turn belongs to no request, so it never reaches the brain as a piece of the open one.
         switch = BrainResult(
             intent=now.request.intent,
             details=now.request.details,
             new_request=True,
             next_move=NextMove.SWITCH,
-            say=result.say,
+            say=say,
         )
         return Step(request=now.request, result=switch, request_id=None, heard=now.fragment)
     if result.next_move == NextMove.CANCEL:
         return Step(request=now.request, result=result, request_id=now.request.id, heard=now.fragment)
     request = now.request.model_copy(update={"intent": result.intent, "details": result.details})
+    if not result.say.strip():
+        say = _empty_reply(result.next_move, request.intent, request.details)
+        result = result.model_copy(update={"say": say})
     return Step(request=request, result=result, request_id=request.id, heard=now.fragment)
+
+
+def _request_action(intent: Intent | None, details: dict, *, current: bool = False) -> str:
+    if intent == Intent.REMINDER:
+        what = str(details.get("what", "a reminder"))
+        when = str(details.get("when", ""))
+        if current:
+            return f"the reminder for {what}" + (f" {when}" if when else "")
+        return f"set a reminder for {what}" + (f" {when}" if when else "")
+    if intent == Intent.CALL:
+        who = str(details.get("who", "someone"))
+        return f"the call to {who}" if current else f"call {who}"
+    if intent == Intent.MESSAGE:
+        who = str(details.get("who", "someone"))
+        return f"the message to {who}" if current else f"send a message to {who}"
+    return "this request" if current else "the new request"
+
+
+def _switch_question(old_intent: Intent, old_details: dict, new_intent: Intent, new_details: dict) -> str:
+    return Reply.SWITCH_REQUEST.format(
+        current=_request_action(old_intent, old_details, current=True),
+        new=_request_action(new_intent, new_details),
+    )
+
+
+def _confirmation_question(intent: Intent | None, details: dict) -> str:
+    if intent is None:
+        return Reply.CONFIRM_GENERIC
+    return Reply.CONFIRM_REQUEST.format(request=_request_action(intent, details))
+
+
+def _empty_reply(move: NextMove, intent: Intent | None, details: dict) -> str:
+    if move == NextMove.LISTEN:
+        return Reply.STILL_LISTENING
+    if move == NextMove.ASK:
+        return Reply.SAY_MORE
+    if move == NextMove.CONFIRM:
+        return _confirmation_question(intent, details)
+    if move == NextMove.CANCEL:
+        return Reply.CANCELLED
+    if move == NextMove.HELP:
+        return Reply.HELP_ASKED
+    return Reply.CONFIRM_GENERIC
 
 
 def _set_aside_piece(last: Turn | None) -> str | None:

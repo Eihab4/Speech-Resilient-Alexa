@@ -1,5 +1,7 @@
 import json
 
+import pytest
+
 from brain.mock import MockAnswers
 from brain.schemas import BrainResult
 from config import Settings
@@ -37,6 +39,16 @@ def test_unknown_speech_gets_the_fallback(server):
 
     assert result["next_move"] == NextMove.ASK
     assert result["say"] == "What would you like me to do?"
+
+
+@pytest.mark.parametrize("heard", ["um", "hello"])
+def test_an_empty_model_reply_gets_audible_fallback(server, heard):
+    url = server(**NO_KEYS)
+
+    result = with_client(url, lambda client: understand(client, heard), token_for(url))
+
+    assert result["next_move"] == NextMove.LISTEN
+    assert result["say"] == "Take your time. I'm still listening."
 
 
 def test_recordings_are_valid_results_and_cover_the_demo_scenarios():

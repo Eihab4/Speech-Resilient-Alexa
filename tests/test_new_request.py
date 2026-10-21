@@ -63,6 +63,33 @@ def test_a_new_request_asks_before_dropping_the_open_one(server, db_path):
     assert pieces == ["tomorrow", "doctor ten"]
 
 
+def test_a_changed_intent_still_asks_before_replacing_the_open_request(server, db_path):
+    url = server()
+    reminder = say(url, "doctor")
+
+    switch = say(url, "uh no no call my mom")
+    request, pieces = inspect(db_path, reminder["pending_id"])
+
+    assert switch["next_move"] == NextMove.SWITCH
+    assert switch["say"] == "Should I stop the reminder for doctor appointment and call mom instead?"
+    assert request.status == RequestStatus.PENDING
+    assert pieces == ["doctor"]
+
+
+def test_a_hesitant_yes_can_accept_the_switch_and_confirm_the_new_request(server):
+    url = server()
+    say(url, "doctor")
+    say(url, "uh no no call my mom")
+
+    switched = say(url, "yes")
+    confirmed = say(url, "um, yes")
+    done = call(url, "do_confirmed_request", user_id="user1", pending_id=confirmed["pending_id"])
+
+    assert switched["next_move"] == NextMove.CONFIRM
+    assert confirmed["next_move"] == NextMove.DONE
+    assert done == {"done": True, "say": "Done. Calling mom."}
+
+
 def test_yes_replaces_the_open_request_with_the_new_one(server, db_path):
     url = server()
     reminder, _ = call_mom_during_a_reminder(url)

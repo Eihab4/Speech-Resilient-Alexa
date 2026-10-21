@@ -30,6 +30,20 @@
       "next_move": "ask",
       "say": "What time?"
     },
+    "doctor uh no no call my mom": {
+      "intent": "call",
+      "details": {"who": "mom"},
+      "next_move": "confirm",
+      "say": "Call Mom?"
+    },
+    "uh no no call my mom": {
+      "intent": "call",
+      "details": {"who": "mom"},
+      "next_move": "confirm",
+      "say": "Call Mom?"
+    },
+    "um": {"next_move": "listen", "say": ""},
+    "hello": {"next_move": "listen", "say": ""},
     "remind pills": {
       "intent": "reminder",
       "details": {"what": "pills"},
@@ -81,6 +95,12 @@
       "details": {"who": "mom"},
       "next_move": "confirm",
       "say": "Call Mom?"
+    },
+    "call mom maybe": {
+      "intent": "call",
+      "details": {"who": "mom"},
+      "next_move": "done",
+      "say": ""
     },
     "call sara no mom": {
       "intent": "call",
