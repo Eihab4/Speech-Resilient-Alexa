@@ -166,5 +166,6 @@ def test_every_tool_tells_the_agent_when_to_use_it(server):
         "resume_unfinished",
         "emergency_sos",
         "speech_trend",
+        "ask_for_help",
     }
     assert all(description for description in tools.values())

@@ -7,6 +7,7 @@ export const Tool = Object.freeze({
   RESUME_UNFINISHED: "resume_unfinished",
   EMERGENCY_SOS: "emergency_sos",
   SPEECH_TREND: "speech_trend",
+  ASK_FOR_HELP: "ask_for_help",
 });
 
 export const NextMove = Object.freeze({
@@ -16,6 +17,7 @@ export const NextMove = Object.freeze({
   CANCEL: "cancel",
   DONE: "done",
   SOS: "sos",
+  HELP: "help",
 });
 
 export const Speaker = Object.freeze({

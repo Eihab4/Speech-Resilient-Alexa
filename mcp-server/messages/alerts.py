@@ -16,6 +16,15 @@ class AlertText(StrEnum):
 MAP_URL = "https://maps.google.com/?q={latitude},{longitude}"
 
 
+class HelpText(StrEnum):
+    ASKED = "{name} asked Alexa for help."
+    STUCK = "Alexa couldn't understand {name} after {tries} questions."
+    UNDERSTOOD = "Understood so far: {known}."
+    NOTHING = "Nothing was understood yet."
+    SAID = 'They said: "{heard}".'
+    TIME = "Sent at {time}."
+
+
 class TelegramText(StrEnum):
     """What the bot says to a helper who opens their link."""
 

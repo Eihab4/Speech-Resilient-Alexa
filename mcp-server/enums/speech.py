@@ -9,6 +9,7 @@ class NextMove(StrEnum):
     DONE = "done"
     SWITCH = "switch"  # asked whether to drop the open request for a new one
     SOS = "sos"  # counting down before an emergency alert; "stop" cancels it
+    HELP = "help"
 
 
 class Intent(StrEnum):
@@ -41,6 +42,11 @@ class TranscriptType(StrEnum):
     FINAL = "final"  # the person paused; this piece is one turn
     UNAVAILABLE = "unavailable"  # Transcribe could not start; the page falls back to the browser
     ERROR = "error"  # Transcribe failed after it started
+
+
+class AlertKind(StrEnum):
+    SOS = "sos"
+    HELP = "help"
 
 
 class AlertStatus(StrEnum):

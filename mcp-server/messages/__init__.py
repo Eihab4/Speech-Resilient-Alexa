@@ -1,14 +1,15 @@
-from messages.alerts import MAP_URL, TELEGRAM_LINK, AlertText, TelegramText
+from messages.alerts import MAP_URL, TELEGRAM_LINK, AlertText, HelpText, TelegramText
 from messages.errors import ErrorMessage
 from messages.logs import LogMessage
 from messages.prompts import REQUEST_ENDINGS, Prompt
 from messages.replies import ACTION_RESULTS, GENERIC_ACTION_RESULT, Reply
 from messages.tools import ToolDescription
-from messages.vocabulary import NO_WORDS, SOS_PHRASES, STOP_WORDS, YES_WORDS
+from messages.vocabulary import HELP_WORDS, NO_WORDS, SOS_PHRASES, STOP_WORDS, YES_WORDS
 
 __all__ = [
     "ACTION_RESULTS",
     "GENERIC_ACTION_RESULT",
+    "HELP_WORDS",
     "MAP_URL",
     "NO_WORDS",
     "REQUEST_ENDINGS",
@@ -18,6 +19,7 @@ __all__ = [
     "YES_WORDS",
     "AlertText",
     "ErrorMessage",
+    "HelpText",
     "LogMessage",
     "Prompt",
     "Reply",

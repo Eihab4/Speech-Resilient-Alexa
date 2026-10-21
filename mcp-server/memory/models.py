@@ -3,7 +3,7 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
-from enums import AlertStatus, Intent, NextMove, RequestStatus
+from enums import AlertKind, AlertStatus, Intent, NextMove, RequestStatus
 from utils import new_id, utc_now
 
 
@@ -63,6 +63,7 @@ class Helper(BaseModel):
 
 class Alert(BaseModel):
     id: str = Field(default_factory=lambda: new_id("a"))
+    kind: AlertKind
     heard: str = ""
     latitude: float | None = None
     longitude: float | None = None

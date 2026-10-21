@@ -4,8 +4,8 @@ from concurrent.futures import ThreadPoolExecutor
 import pytest
 from pydantic import ValidationError
 
-from enums import NextMove, RequestStatus
-from memory import Helper, Profile, Request, SqliteMemoryStore, Turn
+from enums import AlertKind, AlertStatus, NextMove, RequestStatus
+from memory import Alert, Helper, Profile, Request, SqliteMemoryStore, Turn
 
 
 @pytest.fixture
@@ -190,3 +190,33 @@ def test_requests_saved_with_a_made_up_intent_are_repaired(tmp_path):
 
     assert pending is not None
     assert pending.intent is None
+
+
+def sent(kind):
+    return Alert(kind=kind, text="…", status=AlertStatus.SENT)
+
+
+def test_the_last_sent_alert_is_found_by_its_kind(store):
+    store.start_conversation("demo", "user1")
+    sos = store.add_alert("demo", "user1", sent(AlertKind.SOS))
+    store.add_alert("demo", "user1", sent(AlertKind.HELP))
+
+    assert store.last_sent_alert("demo", "user1", AlertKind.SOS).id == sos.id
+    assert store.last_sent_alert("demo", "user1", AlertKind.HELP).kind == AlertKind.HELP
+
+
+def test_alerts_saved_before_kinds_existed_count_as_sos(tmp_path):
+    db_path = tmp_path / "memory.db"
+    store = SqliteMemoryStore(db_path)
+    store.start_conversation("demo", "user1")
+    store._db.execute("ALTER TABLE alerts DROP COLUMN kind")
+    store._db.execute(
+        "INSERT INTO alerts (id, user_id, heard, text, status, created_at) VALUES ('a_1', 1, '', '…', 'sent', '')"
+    )
+    store.close()
+
+    store = SqliteMemoryStore(db_path)
+    [alert] = store.alerts("demo", "user1")
+    store.close()
+
+    assert alert.kind == AlertKind.SOS

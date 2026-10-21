@@ -5,7 +5,8 @@ class ToolDescription(StrEnum):
     UNDERSTAND_SPEECH = (
         "Call this on every turn while a person is making a request, with their exact words, even if they are "
         "incomplete, out of order or a correction. It remembers earlier pieces and returns what was understood, "
-        "the next move (listen, ask, confirm, cancel, done or sos) and the sentence to say. "
+        "the next move (listen, ask, confirm, cancel, done, sos or help) and the sentence to say. "
+        "help means the person needs their helper: say the sentence, then call ask_for_help and say its reply. "
         "sos means an emergency: wait countdown_seconds, sending anything the person says to this tool as usual, "
         "then call emergency_sos unless a reply other than sos came back first (the person said stop). "
         "Every reply has wait_seconds: how long this person pauses mid-sentence, learned from them. Wait that "
@@ -24,6 +25,11 @@ class ToolDescription(StrEnum):
     SPEECH_TREND = (
         "How many questions Alexa needed per finished request, day by day, for the last TREND_DAYS days. "
         "Call it when the person or their family asks how it is going, or to show progress over time."
+    )
+    ASK_FOR_HELP = (
+        "Send the person's helpers what Alexa understood so far, so someone can step in. Call it when "
+        "understand_speech returns next_move help: the person asked for help, or Alexa still could not "
+        "understand after HELP_AFTER_TRIES questions. The request stays open; say the reply and go on listening."
     )
     EMERGENCY_SOS = (
         "Send the person's helpers an emergency alert right away, with no yes. Call it when the countdown "

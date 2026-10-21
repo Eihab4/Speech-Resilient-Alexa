@@ -67,6 +67,12 @@ class YesNoSettings(Section):
     after_tries: int = 3
 
 
+class HelpSettings(Section):
+    model_config = SettingsConfigDict(env_prefix="HELP_")
+
+    after_tries: int = 5
+
+
 class SosSettings(Section):
     model_config = SettingsConfigDict(env_prefix="SOS_")
 
@@ -172,6 +178,7 @@ class Settings(BaseModel):
     session: SessionSettings = Field(default_factory=SessionSettings)
     yes_no: YesNoSettings = Field(default_factory=YesNoSettings)
     trend: TrendSettings = Field(default_factory=TrendSettings)
+    help: HelpSettings = Field(default_factory=HelpSettings)
     sos: SosSettings = Field(default_factory=SosSettings)
     pause: PauseSettings = Field(default_factory=PauseSettings)
     telegram: TelegramSettings = Field(default_factory=TelegramSettings)
