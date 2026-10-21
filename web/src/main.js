@@ -1,6 +1,6 @@
 import "./styles.css";
-import { Speaker } from "./enums.js";
-import { sendSos, takeTurn } from "./mcp.js";
+import { NextMove, Speaker } from "./enums.js";
+import { sendSos, speechTrend, takeTurn } from "./mcp.js";
 import { Greeting, MicLabel, MuteLabel, Note, SosLabel, SpeakerName, VoiceHint, voiceError } from "./messages.js";
 import { pauseWhileSpeaking } from "./pause.js";
 import { createGatherer } from "./gather.js";
@@ -13,6 +13,7 @@ import { createSos } from "./sos.js";
 import { createBrowserVoice, isBrowserVoiceSupported } from "./speak.js";
 import { createTranscribeListener, isMicSupported } from "./transcribe.js";
 import { createListener, isVoiceSupported } from "./voice.js";
+import { asksForSos } from "./words.js";
 
 const form = document.querySelector("#turn-form");
 const heard = document.querySelector("#heard");
@@ -21,6 +22,7 @@ const micButton = document.querySelector("#mic");
 const muteButton = document.querySelector("#mute");
 const voiceHint = document.querySelector("#voice-hint");
 const conversation = document.querySelector("#conversation");
+const trend = document.querySelector("#trend");
 const sosCountdown = document.querySelector("#sos-countdown");
 const emptyConversation = conversation.innerHTML;
 let listener = null;
@@ -75,6 +77,7 @@ function sendTurn(words, pausesMs = []) {
       sos.follow(result);
       voice.speak(result.say);
       if (!voice.speaking) sos.begin();
+      if (result.next_move === NextMove.DONE) showTrend();
     } catch (error) {
       addMessage(Speaker.ALEXA, error.message, Note.ERROR);
     } finally {
@@ -82,6 +85,14 @@ function sendTurn(words, pausesMs = []) {
       sendButton.disabled = pending > 0;
     }
   });
+}
+
+async function showTrend() {
+  try {
+    trend.textContent = (await speechTrend(currentToken())).say;
+  } catch {
+    trend.textContent = "";
+  }
 }
 
 // Queued behind the turns already sent, so a "stop" said just before the end still cancels it.
@@ -125,8 +136,7 @@ const listenerEvents = {
     heard.value = [gatherer.pending, text].filter(Boolean).join(" ");
   },
   onFragment: (text) => {
-    // During an emergency countdown, "stop" can't wait.
-    gatherer.piece(text, { immediate: sos.state !== "idle" });
+    gatherer.piece(text, { immediate: sos.state !== "idle" || asksForSos(text) });
     heard.value = gatherer.pending;
   },
   onListeningChange: (listening) => {
@@ -190,11 +200,13 @@ signedIn = setupSignIn({
     addMessage(Speaker.ALEXA, hello);
     voice.speak(hello);
     heard.focus();
+    showTrend();
   },
   onSignedOut() {
     if (listener?.listening) listener.stop();
     sos.follow({});
     conversation.innerHTML = emptyConversation;
+    trend.textContent = "";
     people.close();
   },
 });

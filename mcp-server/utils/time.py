@@ -9,5 +9,9 @@ def hours_from_now(hours: float) -> str:
     return (datetime.now(UTC) + timedelta(hours=hours)).isoformat(timespec="seconds")
 
 
+def clock_now() -> str:
+    return datetime.now().astimezone().strftime("%H:%M")
+
+
 def hours_ago(hours: float) -> str:
     return (datetime.now(UTC) - timedelta(hours=hours)).isoformat(timespec="seconds")

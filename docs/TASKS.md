@@ -5,7 +5,7 @@
 - [x] **Rana — Voice input (speech → text):** a Speak button; what was said goes to the server in pieces. The microphone streams to the server, which uses Amazon Transcribe. If Transcribe is unavailable, the browser's own speech recognition takes over (Chrome and Edge).
 - [x] **Eihab — Voice output (text → speech):** Alexa reads every reply aloud with Amazon Polly (neural voice, Joanna by default) through the server's `POST /speak`, so the AWS keys never reach the browser. The browser's voice is the fallback. The microphone pauses while she talks, and **Mute Alexa** cuts her off.
 - [x] **Rana — Learn each person's pauses:** Alexa waits each person's own mid-sentence pause length before answering, instead of jumping in at every pause. Learned from their measured pauses (outliers dropped, 75th percentile) and from her early answers; returned as `wait_seconds`. Details: [feature-learn-pauses.md](branches/feature-learn-pauses.md).
-- [ ] **SOS by voice waits too:** "I fell" said aloud starts the countdown only after the person's wait (up to 6 s). Make SOS words skip the wait in the page.
+- [x] **Eihab — SOS by voice waits too:** a piece with an SOS phrase goes to the server at once instead of waiting the person's pause length (`../web/src/words.js`, the same phrases as the server; a test keeps the two lists equal).
 - [x] **Eihab — Polly retry:** Polly is tried first on every reply; the browser voice only covers the reply Polly missed (`../web/src/output.js`).
 - [ ] **Rana — `learn_my_speech`:** keep a word list per person in SQLite (names from contacts, and corrections like "no, *Sara*"). Push it to a Transcribe custom vocabulary so Alexa learns their words. An update takes a few minutes to be ready, so keep using the old list until then.
 
@@ -34,7 +34,7 @@ Next to each tool is the service it uses. **Polly** and **the brain** (the LLM) 
 
 ### Do first
 
-- [ ] **`ask_for_help`** — SNS, memory: when the person says "help", or Alexa still hasn't understood after a few tries, the caregiver gets what was understood so far ("Dad is trying to set a reminder for the doctor tomorrow, the time is unclear"). In the demo, a teammate's phone gets the SMS live.
+- [x] **Eihab — `ask_for_help`** — Telegram, memory: when the person says "help", or Alexa still hasn't understood after `HELP_AFTER_TRIES` questions, the helper gets what was understood so far ("Alexa couldn't understand Ahmed after 5 questions. Understood so far: reminder, when: tomorrow."). The page also shows the `speech_trend` sentence now. Details: [feature-ask-for-help.md](branches/feature-ask-for-help.md).
 - [x] **Eihab — `speech_trend`** — memory only: how many questions Alexa needed per finished request, day by day, for the last `TREND_DAYS` days, with a sentence that compares the first day to now. Details: [feature-speech-trend.md](branches/feature-speech-trend.md).
 - [ ] **`speech_practice`** — Transcribe, memory: daily speech exercises. Alexa gives words to say, scores each one from Transcribe's confidence per word, and tracks progress with `speech_trend`. For people recovering after a stroke. Today the server only passes the text on, so `transcription/stream.py` must also pass the confidence.
 - [ ] **`finish_my_sentence`** — memory, brain: the person says "call…" and stops. Alexa offers the likely endings: "Mom? Sara? The doctor?", like phone keyboard suggestions, but spoken. The suggestions come from **Usual requests**, so do that first.

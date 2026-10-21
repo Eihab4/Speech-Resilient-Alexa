@@ -5,13 +5,13 @@ from functools import wraps
 from pathlib import Path
 from threading import RLock
 
-from enums import AlertStatus, Intent, NextMove, RequestStatus
+from enums import AlertKind, AlertStatus, Intent, NextMove, RequestStatus
 from memory.models import Action, Alert, DayTries, Helper, Profile, Request, Summary, Turn
 from utils import hours_ago, utc_now
 
 SCHEMA = (Path(__file__).parent / "schema.sql").read_text()
 HELPER_COLUMNS = "h.id, h.name, h.link_code, h.telegram_chat_id, h.linked_at, h.created_at"
-ALERT_COLUMNS = "a.id, a.heard, a.latitude, a.longitude, a.address, a.text, a.status, a.created_at"
+ALERT_COLUMNS = "a.id, a.kind, a.heard, a.latitude, a.longitude, a.address, a.text, a.status, a.created_at"
 OF_USER = "JOIN users u ON u.id = {table}.user_id WHERE u.company_id = ? AND u.external_id = ?"
 
 
@@ -51,6 +51,9 @@ class SqliteMemoryStore:
         columns = {row["name"] for row in self._db.execute("PRAGMA table_info(sessions)")}
         if "expires_at" not in columns:
             self._db.execute("ALTER TABLE sessions ADD COLUMN expires_at TEXT NOT NULL DEFAULT ''")
+        columns = {row["name"] for row in self._db.execute("PRAGMA table_info(alerts)")}
+        if "kind" not in columns:
+            self._db.execute(f"ALTER TABLE alerts ADD COLUMN kind TEXT NOT NULL DEFAULT '{AlertKind.SOS}'")
         placeholders = ", ".join("?" * len(Intent))
         self._db.execute(f"UPDATE requests SET intent = NULL WHERE intent NOT IN ({placeholders})", list(Intent))
 
@@ -178,11 +181,11 @@ class SqliteMemoryStore:
     def tries_per_day(self, conversation_id: int, days: int) -> list[DayTries]:
         rows = self._db.execute(
             "SELECT day, COUNT(*) AS requests, ROUND(AVG(asks), 1) AS tries FROM ("
-            "  SELECT substr(MIN(t.created_at), 1, 10) AS day, SUM(t.next_move = ?) AS asks"
+            "  SELECT substr(MIN(t.created_at), 1, 10) AS day, SUM(t.next_move IN (?, ?)) AS asks"
             "  FROM turns t JOIN requests r ON r.id = t.request_id"
             "  WHERE t.conversation_id = ? AND r.status = ? GROUP BY t.request_id"
             ") GROUP BY day ORDER BY day DESC LIMIT ?",
-            (NextMove.ASK, conversation_id, RequestStatus.DONE, days),
+            (NextMove.ASK, NextMove.HELP, conversation_id, RequestStatus.DONE, days),
         ).fetchall()
         return [DayTries(**row) for row in reversed(rows)]
 
@@ -253,11 +256,12 @@ class SqliteMemoryStore:
 
     def add_alert(self, company_id: str, user_id: str, alert: Alert) -> Alert:
         self._db.execute(
-            "INSERT INTO alerts (id, user_id, heard, latitude, longitude, address, text, status, created_at) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            "INSERT INTO alerts (id, user_id, kind, heard, latitude, longitude, address, text, status, created_at) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             (
                 alert.id,
                 self._user_id(company_id, user_id),
+                alert.kind,
                 alert.heard,
                 alert.latitude,
                 alert.longitude,
@@ -269,11 +273,11 @@ class SqliteMemoryStore:
         )
         return alert
 
-    def last_sent_alert(self, company_id: str, user_id: str) -> Alert | None:
+    def last_sent_alert(self, company_id: str, user_id: str, kind: AlertKind) -> Alert | None:
         row = self._db.execute(
-            f"SELECT {ALERT_COLUMNS} FROM alerts a {OF_USER.format(table='a')} AND a.status = ? "
+            f"SELECT {ALERT_COLUMNS} FROM alerts a {OF_USER.format(table='a')} AND a.kind = ? AND a.status = ? "
             "ORDER BY a.rowid DESC LIMIT 1",
-            (company_id, user_id, AlertStatus.SENT),
+            (company_id, user_id, kind, AlertStatus.SENT),
         ).fetchone()
         return Alert(**row) if row else None
 

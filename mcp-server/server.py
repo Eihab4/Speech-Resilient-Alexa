@@ -18,6 +18,7 @@ from notify import HelperLinker, create_bot, create_notifier
 from pacing import Pacing
 from people import Guard, Sessions, SessionVerifier, create_people_routes
 from speech import PollySynthesizer, create_speak_endpoint
+from tools.ask_for_help import ask_for_help as send_help
 from tools.cancel_request import cancel_request as cancel
 from tools.do_confirmed_request import do_confirmed_request as do_confirmed
 from tools.emergency_sos import emergency_sos as send_sos
@@ -105,6 +106,7 @@ def understand_speech(heard: str, ctx: Context, pauses_ms: list[int] | None = No
         r["pacing"],
         pauses_ms,
         settings.yes_no.after_tries,
+        settings.help.after_tries,
     )
 
 
@@ -126,6 +128,12 @@ def cancel_request(ctx: Context) -> dict:
 @mcp.tool(description=ToolDescription.SPEECH_TREND)
 def speech_trend(ctx: Context) -> dict:
     return trend(ctx.lifespan_context["store"], settings.memory.company_id, caller(), settings.trend.days)
+
+
+@mcp.tool(description=ToolDescription.ASK_FOR_HELP)
+def ask_for_help(ctx: Context) -> dict:
+    r = ctx.lifespan_context
+    return send_help(r["store"], r["notifier"], settings.memory.company_id, caller())
 
 
 @mcp.tool(description=ToolDescription.EMERGENCY_SOS)

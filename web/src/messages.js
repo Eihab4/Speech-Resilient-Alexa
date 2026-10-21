@@ -69,6 +69,7 @@ export const invitation = (helper, person, link) =>
   [
     `Hi ${helper}! ${person} added you as an emergency contact on Speech-Resilient Alexa.`,
     `If ${person} ever says "I fell" or "help help", you'll get a message in Telegram with where they are.`,
+    `If they say "help", or Alexa can't understand them, you'll get what she understood so far.`,
     "",
     "To start:",
     `1. Open this link on your phone (install Telegram first if you don't have it): ${link}`,

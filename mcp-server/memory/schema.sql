@@ -72,6 +72,7 @@ CREATE TABLE IF NOT EXISTS helpers (
 CREATE TABLE IF NOT EXISTS alerts (
     id TEXT PRIMARY KEY,
     user_id INTEGER NOT NULL REFERENCES users(id),
+    kind TEXT NOT NULL,
     heard TEXT NOT NULL,
     latitude REAL,
     longitude REAL,

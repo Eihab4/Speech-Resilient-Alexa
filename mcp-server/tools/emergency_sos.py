@@ -1,32 +1,28 @@
-import logging
 import re
-from datetime import datetime
 
 from config.settings import SosSettings
-from enums import AlertStatus, NextMove
+from enums import AlertKind, AlertStatus, NextMove
 from location import Geocoder
-from memory import Alert, Helper, MemoryStore, Profile, Turn
-from messages import MAP_URL, SOS_PHRASES, STOP_WORDS, AlertText, LogMessage, Reply
-from notify import Notifier, Position
-from utils import hours_ago
-
-logger = logging.getLogger(__name__)
+from memory import Alert, MemoryStore, Profile, Turn
+from messages import MAP_URL, SOS_PHRASES, STOP_WORDS, AlertText, Reply
+from notify import Notifier, Position, linked_helpers, names, outcome, reach
+from utils import clock_now, hours_ago
 
 SOS_PATTERN = re.compile(r"\b(" + "|".join(map(re.escape, SOS_PHRASES)) + r")\b")
 
 
-def _words(heard: str) -> str:
+def plain_words(heard: str) -> str:
     """The piece as plain lowercase words, so punctuation and pauses ("i… fell") don't matter."""
     return " ".join(re.findall(r"[a-z']+", heard.lower().replace("’", "'")))
 
 
 def asks_for_sos(heard: str) -> bool:
-    words = _words(heard)
+    words = plain_words(heard)
     return bool(SOS_PATTERN.search(words)) or words.split().count("help") >= 2
 
 
 def says_stop(heard: str) -> bool:
-    return _words(heard) in STOP_WORDS
+    return plain_words(heard) in STOP_WORDS
 
 
 def emergency_sos(
@@ -40,7 +36,7 @@ def emergency_sos(
     longitude: float | None = None,
 ) -> dict:
     conversation = store.conversation_for(company_id, user_id)
-    recent = store.last_sent_alert(company_id, user_id)
+    recent = store.last_sent_alert(company_id, user_id, AlertKind.SOS)
     if recent and recent.created_at >= hours_ago(settings.cooldown_minutes / 60):
         return _finish(store, conversation, Reply.SOS_ALREADY_SENT, sent_to=[])
 
@@ -48,18 +44,25 @@ def emergency_sos(
     heard = " … ".join(_countdown_pieces(store, conversation))
     address = geocoder.address(position) if position else None
     text = alert_text(store.profile(company_id, user_id) or Profile(name=user_id), heard, position, address)
-    helpers = [helper for helper in store.helpers(company_id, user_id) if helper.linked]
-    sent_to = [helper.name for helper in helpers if _deliver(notifier, helper, text, position)]
-
-    if not helpers:
-        status, say = AlertStatus.NO_HELPER, Reply.SOS_NO_HELPER
-    elif not sent_to:
-        status, say = AlertStatus.FAILED, Reply.SOS_FAILED
+    helpers = linked_helpers(store, company_id, user_id)
+    sent_to = reach(notifier, helpers, text, position)
+    status = outcome(helpers, sent_to)
+    if status == AlertStatus.NO_HELPER:
+        say = Reply.SOS_NO_HELPER
+    elif status == AlertStatus.FAILED:
+        say = Reply.SOS_FAILED
     else:
-        status = AlertStatus.SENT
-        say = (Reply.SOS_SENT if position else Reply.SOS_SENT_NO_PLACE).format(who=_names(sent_to))
+        say = (Reply.SOS_SENT if position else Reply.SOS_SENT_NO_PLACE).format(who=names(sent_to))
 
-    alert = Alert(heard=heard, latitude=latitude, longitude=longitude, address=address, text=text, status=status)
+    alert = Alert(
+        kind=AlertKind.SOS,
+        heard=heard,
+        latitude=latitude,
+        longitude=longitude,
+        address=address,
+        text=text,
+        status=status,
+    )
     store.add_alert(company_id, user_id, alert)
     return _finish(store, conversation, say, sent_to)
 
@@ -73,7 +76,7 @@ def alert_text(profile: Profile, heard: str, position: Position | None, address:
     else:
         where = [AlertText.NO_PLACE]
     said = AlertText.SAID.format(heard=heard) if heard else ""
-    time = AlertText.TIME.format(time=datetime.now().astimezone().strftime("%H:%M"))
+    time = AlertText.TIME.format(time=clock_now())
     return "\n".join(filter(None, [AlertText.HEADER.format(name=profile.name), said, *where, time]))
 
 
@@ -85,20 +88,6 @@ def _countdown_pieces(store: MemoryStore, conversation: int) -> list[str]:
             break
         pieces.append(turn.heard)
     return pieces[::-1]
-
-
-def _deliver(notifier: Notifier, helper: Helper, text: str, position: Position | None) -> bool:
-    # One helper's channel failing must not stop the alert from reaching the others.
-    try:
-        notifier.notify(helper, text, position)
-    except Exception:
-        logger.exception(LogMessage.ALERT_NOT_DELIVERED.format(helper=helper.name))
-        return False
-    return True
-
-
-def _names(names: list[str]) -> str:
-    return names[0] if len(names) == 1 else f"{', '.join(names[:-1])} {Reply.AND} {names[-1]}"
 
 
 def _finish(store: MemoryStore, conversation: int, say: str, sent_to: list[str]) -> dict:

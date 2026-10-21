@@ -74,6 +74,7 @@ def test_env_example_lists_every_setting():
         "sos": "SOS_",
         "yes_no": "YES_NO_",
         "trend": "TREND_",
+        "help": "HELP_",
         "pause": "PAUSE_",
         "telegram": "TELEGRAM_",
         "location": "LOCATION_",

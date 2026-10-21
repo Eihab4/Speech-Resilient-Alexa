@@ -125,7 +125,7 @@ def test_stop_with_nothing_open_just_listens(server):
     assert stopped["say"] == Reply.SOS_STOPPED
 
 
-@pytest.mark.parametrize("heard", ["okay", "please hurry", "help help"])
+@pytest.mark.parametrize("heard", ["okay", "please hurry", "help help", "help"])
 def test_anything_but_stop_keeps_the_countdown_going(server, heard):
     url = server()
     say(url, "I fell")

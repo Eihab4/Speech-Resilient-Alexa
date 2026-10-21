@@ -28,6 +28,14 @@ def finished_request(store, conversation, asks, days_ago, status=RequestStatus.D
     return request
 
 
+def test_a_turn_that_asked_the_helper_counts_as_a_try(store):
+    conversation = store.start_conversation("demo", "user1")
+    request = finished_request(store, conversation, asks=2, days_ago=0)
+    store.add_turn(conversation, Turn(request_id=request.id, heard="…", say="…", next_move=NextMove.HELP))
+
+    assert store.tries_per_day(conversation, 14)[0].tries == 3
+
+
 def day(days_ago):
     return sqlite3.connect(":memory:").execute("SELECT date('now', ?)", (f"-{days_ago} days",)).fetchone()[0]
 
