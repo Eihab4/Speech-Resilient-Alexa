@@ -8,6 +8,8 @@ export function setupPeople(section, getSession) {
   const token = () => getSession()?.token ?? "";
   const profileForm = section.querySelector("#profile-form");
   const addressInput = section.querySelector("#profile-address");
+  const emailInput = section.querySelector("#profile-email");
+  const emailStatus = section.querySelector("#reminder-email-status");
   const helperForm = section.querySelector("#helper-form");
   const helperName = section.querySelector("#helper-name");
   const list = section.querySelector("#helpers");
@@ -17,6 +19,16 @@ export function setupPeople(section, getSession) {
   let shown = "";
 
   const show = (message) => (status.textContent = message);
+
+  function showEmailStatus(profile) {
+    const statusByValue = {
+      not_set: "",
+      pending_confirmation: "Check your inbox and confirm the Amazon SNS subscription.",
+      confirmed: "Email address confirmed.",
+      unavailable: "Email confirmation is unavailable. Check the AWS setup and try again.",
+    };
+    emailStatus.textContent = statusByValue[profile.reminder_email_status] ?? "";
+  }
 
   function button(label, onClick) {
     const element = document.createElement("button");
@@ -89,6 +101,8 @@ export function setupPeople(section, getSession) {
     if (!token() || !section.open) return;
     const profile = await loadProfile(token());
     addressInput.value = profile.home_address ?? "";
+    emailInput.value = profile.reminder_email ?? "";
+    showEmailStatus(profile);
     await refreshHelpers();
   }
 
@@ -97,7 +111,8 @@ export function setupPeople(section, getSession) {
   profileForm.addEventListener("submit", (event) => {
     event.preventDefault();
     run(async () => {
-      await saveProfile(token(), getSession().name, addressInput.value.trim());
+      const profile = await saveProfile(token(), getSession().name, addressInput.value.trim(), emailInput.value.trim());
+      showEmailStatus(profile);
       show(PeopleLabel.SAVED);
     });
   });
@@ -123,6 +138,8 @@ export function setupPeople(section, getSession) {
       list.replaceChildren();
       shown = "";
       addressInput.value = "";
+      emailInput.value = "";
+      emailStatus.textContent = "";
       show("");
     },
   };
