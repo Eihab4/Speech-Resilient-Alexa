@@ -1,7 +1,16 @@
+import string
+
+
 YES_WORDS = frozenset(
     {"yes", "yeah", "yep", "yup", "mm-hm", "mhm", "right", "sure", "okay", "ok", "that's it", "do it"}
 )
+REPEATED_YES_WORDS = frozenset(
+    {"yes", "yeah", "yep", "yup", "mm-hm", "mhm", "right", "sure", "okay", "ok"}
+)
 NO_WORDS = frozenset({"no", "nope", "no no", "nah", "wrong"})
+PUNCTUATION_TO_SPACE = str.maketrans(
+    {character: " " for character in string.punctuation.replace("'", "").replace("-", "") + "…،؟"}
+)
 # Said when the person is in danger. Matched anywhere in a piece, because the speech is often broken
 # ("uh… i fell… floor"). "help" alone is not here: it takes two of them, see tools/emergency_sos.py.
 SOS_PHRASES = ("i fell", "i fall", "fell down", "emergency", "sos", "ambulance")

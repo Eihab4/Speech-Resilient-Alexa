@@ -4,7 +4,7 @@ from brain.base import Brain
 from brain.schemas import BrainResult
 from enums import AskMode, NextMove, RequestStatus
 from memory import History, MemoryStore, Request, Turn
-from messages import NO_WORDS, YES_WORDS, Reply
+from messages import NO_WORDS, PUNCTUATION_TO_SPACE, REPEATED_YES_WORDS, YES_WORDS, Reply
 from pacing import Pacing
 from tools.ask_for_help import TRIES, asks_for_help
 from tools.emergency_sos import asks_for_sos, says_stop
@@ -138,8 +138,9 @@ def _stop_countdown(now: Moment) -> dict:
 
 def _decide(now: Moment) -> Step:
     """A yes or a no to Alexa's last question is handled here; everything else goes to the brain."""
-    said_yes = now.fragment.lower() in YES_WORDS
-    said_no = now.fragment.lower() in NO_WORDS
+    words = " ".join(now.fragment.lower().translate(PUNCTUATION_TO_SPACE).split())
+    said_yes = words in YES_WORDS or _is_repeated_yes(words)
+    said_no = words in NO_WORDS
     set_aside = _set_aside_piece(now.last) if now.earlier else None
     awaiting_yes = bool(now.earlier) and now.earlier[-1].next_move == NextMove.CONFIRM
 
@@ -152,6 +153,12 @@ def _decide(now: Moment) -> Step:
     if awaiting_yes and said_no:
         return _ask_what_to_change(now)
     return _interpret(now)
+
+
+def _is_repeated_yes(words: str) -> bool:
+    """Accept speech recognition repeating a short affirmative (for example, "yes, yes")."""
+    pieces = words.split()
+    return len(pieces) > 1 and all(piece in REPEATED_YES_WORDS for piece in pieces)
 
 
 def _switch_to(now: Moment, piece: str) -> Step:
