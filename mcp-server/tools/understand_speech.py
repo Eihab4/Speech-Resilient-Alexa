@@ -173,8 +173,10 @@ def _without_fillers(words: str) -> str:
 
 def _switch_to(now: Moment, piece: str) -> Step:
     """Yes to switching: the open request is replaced, and the set-aside piece starts the new one."""
-    now.store.save_request(now.conversation, now.request.model_copy(update={"status": RequestStatus.REPLACED}))
+    # Interpret the new request while the old one is still pending. History excludes pending requests;
+    # marking it replaced first would feed the abandoned request back into the model as finished context.
     result = now.ask_brain([piece])
+    now.store.save_request(now.conversation, now.request.model_copy(update={"status": RequestStatus.REPLACED}))
     request = Request(intent=result.intent, details=result.details)
     return Step(request=request, result=result, request_id=request.id, heard=piece)
 
