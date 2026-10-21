@@ -199,12 +199,132 @@ Entries 1 to 4 come from what happened while building. **TODO:** add your own wi
 
 ---
 
-## Video plan (under 3 minutes)
+## Video script (target: 2:50)
 
-1. **0:00 to 0:20, the problem.** A person speaks in pieces; a normal assistant gives up after the first pause.
-2. **0:20 to 1:10, broken speech.** Say "tomorrow…", "doctor…", "ten" with pauses: live captions from Transcribe, Alexa's Polly voice asks "Should I set a reminder…?", "yes", done. Then a correction: "call Sara", "no, Mom".
-3. **1:10 to 1:30, memory.** Stop halfway, restart, and Alexa offers to finish the request.
-4. **1:30 to 2:30, SOS.** Say "I fell": the red countdown. Stay silent: a teammate's phone gets the Telegram alert with the street address and the map pin. Then "help help" and "stop": nothing is sent.
-5. **2:30 to 2:55, how it's built.** The architecture picture: MCP server, Transcribe, Polly, Location.
+The [official rules](https://aws-agent-hackathon.devpost.com/rules) say the demo should be around three minutes and judges are not required to watch past the three-minute mark. Record the app working, upload the video publicly to YouTube or Vimeo, and keep the submission materials in English. Use quick cuts; do not wait for a scheduled reminder to arrive on camera.
 
-Keep the camera on the message on the phone, not on app logos, and use no copyrighted music.
+### Before recording
+
+- Sign in to the demo account. In **People who help me**, have the reminder email confirmed, a test helper linked in Telegram, and browser location allowed. Keep the helper informed: SOS and help send real Telegram messages.
+- Prepare a second test account with no conversation history. Use it for a two-second cut showing that accounts do not share requests; do not show either password.
+- Prepare one unfinished request for the `resume_unfinished` clip. That tool is not called by this demo page; show it briefly in MCP Inspector using the same signed-in account.
+- Keep a previously delivered reminder email ready as a cutaway. Hide the email address, unsubscribe link, home address, and any other private details.
+- Have the helper's phone ready for the Telegram clips. Use the architecture image **without Groq and OpenRouter logos**. No copyrighted music.
+
+### Timed script and exact lines
+
+#### 0:00–0:12 — Opening and setup
+
+**Show:** Sign out, briefly sign in to the empty second account, then return to the demo account. Flash the **Speak**, **Send**, and **Mute Alexa** controls. Open **People who help me** long enough to show the confirmed email, linked helper, and location setting.
+
+**Say:**
+
+> “Speech-Resilient Alexa is for people who speak slowly or in fragments. She keeps the context, waits, and asks before acting. Each account keeps its own memory.”
+
+#### 0:12–0:52 — Speak in pieces, complete a reminder
+
+**Show:** Click **Speak**. Say each piece with a natural pause:
+
+> “Remind me…”
+>
+> “to call the doctor…”
+>
+> “tomorrow at ten.”
+
+Answer any missing question. When Alexa repeats the reminder, say:
+
+> “Yes.”
+
+**Show:** The completed request and **Speech trend** line. During a reply, click **Mute Alexa**, then click **Unmute Alexa**.
+
+**Say:**
+
+> “Amazon Transcribe hears each piece. Alexa remembers them and learns my pauses. She acts only after I say yes.”
+
+This clip shows `understand_speech`, `do_confirmed_request`, voice input and output, learned pauses, and `speech_trend`.
+
+#### 0:52–1:15 — Switch requests and refuse an action
+
+**Show:** Start a request:
+
+> **You:** “Remind me to call the dentist tomorrow.”
+>
+> **Alexa:** asks a follow-up.
+>
+> **You:** “Call Mom.”
+>
+> **Alexa:** asks whether to switch.
+>
+> **You:** “Yes.”
+>
+> **Alexa:** “Call Mom?”
+>
+> **You:** “No.”
+
+Show that the call does not happen.
+
+**Say:**
+
+> “Alexa asks before switching requests, and no means no action.”
+
+#### 1:15–1:27 — Cancel
+
+**Show:** Say:
+
+> “Cancel.”
+
+Show Alexa drop the pending request. Nothing is carried out. This shows `cancel_request`.
+
+#### 1:27–1:40 — Resume an unfinished request
+
+**Show:** Switch to MCP Inspector and call `resume_unfinished` for the request prepared before recording. Switch back to the demo page.
+
+**Say:**
+
+> “After a break, the same account can retrieve its unfinished request.”
+
+#### 1:40–1:58 — Ask a helper for help
+
+**Show:** Leave a request incomplete and say:
+
+> “Help.”
+
+Show the helper's Telegram message with what Alexa understood so far. This shows `ask_for_help`.
+
+**Say:**
+
+> “If I need help, my helper gets the request context.”
+
+#### 1:58–2:08 — Yes-or-no mode
+
+**Show:** Use a quick cut through a few failed clarification turns. Show Alexa make a short yes-or-no guess, then answer:
+
+> “Yes.”
+
+**Say:**
+
+> “After repeated confusion, Alexa switches to a yes-or-no guess.”
+
+This is part of `understand_speech`, not a separate tool.
+
+#### 2:08–2:38 — SOS to Telegram
+
+**Show:** Say:
+
+> “I fell.”
+
+Show the countdown. Let it finish only with the test helper ready, then show the Telegram alert and map pin. This shows `emergency_sos`.
+
+**Say:**
+
+> “If I cannot respond, the countdown ends and my helper gets an SOS with my location.”
+
+#### 2:38–2:50 — Email and architecture
+
+**Show:** Cut to the previously delivered reminder email for two seconds, then show the architecture diagram without third-party logos.
+
+**Say:**
+
+> “EventBridge Scheduler sends real reminders by email. Transcribe, Polly, and Location support the voice and emergency flow.”
+
+The seven MCP tools are all represented: `understand_speech`, `do_confirmed_request`, `cancel_request`, `resume_unfinished`, `speech_trend`, `ask_for_help`, and `emergency_sos`. The reminder email is a real delivered message; the calls/messages in the demo are simulated. For any SOS or help clip, use only a helper who has agreed to receive test alerts. Crop or blur personal data in the email and Telegram footage.
