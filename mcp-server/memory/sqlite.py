@@ -54,6 +54,11 @@ class SqliteMemoryStore:
         columns = {row["name"] for row in self._db.execute("PRAGMA table_info(alerts)")}
         if "kind" not in columns:
             self._db.execute(f"ALTER TABLE alerts ADD COLUMN kind TEXT NOT NULL DEFAULT '{AlertKind.SOS}'")
+        columns = {row["name"] for row in self._db.execute("PRAGMA table_info(profiles)")}
+        if "reminder_email" not in columns:
+            self._db.execute("ALTER TABLE profiles ADD COLUMN reminder_email TEXT")
+        if "reminder_topic_arn" not in columns:
+            self._db.execute("ALTER TABLE profiles ADD COLUMN reminder_topic_arn TEXT")
         placeholders = ", ".join("?" * len(Intent))
         self._db.execute(f"UPDATE requests SET intent = NULL WHERE intent NOT IN ({placeholders})", list(Intent))
 
@@ -202,15 +207,26 @@ class SqliteMemoryStore:
 
     def save_profile(self, company_id: str, user_id: str, profile: Profile) -> None:
         self._db.execute(
-            "INSERT INTO profiles (user_id, name, home_address, updated_at) VALUES (?, ?, ?, ?) "
+            "INSERT INTO profiles (user_id, name, home_address, reminder_email, reminder_topic_arn, updated_at) "
+            "VALUES (?, ?, ?, ?, ?, ?) "
             "ON CONFLICT (user_id) DO UPDATE SET name = excluded.name, home_address = excluded.home_address, "
+            "reminder_email = excluded.reminder_email, reminder_topic_arn = excluded.reminder_topic_arn, "
             "updated_at = excluded.updated_at",
-            (self._user_id(company_id, user_id), profile.name, profile.home_address, utc_now()),
+            (
+                self._user_id(company_id, user_id),
+                profile.name,
+                profile.home_address,
+                profile.reminder_email,
+                profile.reminder_topic_arn,
+                utc_now(),
+            ),
         )
 
     def profile(self, company_id: str, user_id: str) -> Profile | None:
         row = self._db.execute(
-            f"SELECT p.name, p.home_address FROM profiles p {OF_USER.format(table='p')}", (company_id, user_id)
+            f"SELECT p.name, p.home_address, p.reminder_email, p.reminder_topic_arn "
+            f"FROM profiles p {OF_USER.format(table='p')}",
+            (company_id, user_id),
         ).fetchone()
         return Profile(**row) if row else None
 

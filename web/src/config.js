@@ -1,4 +1,5 @@
-export const MCP_URL = import.meta.env.VITE_MCP_URL ?? "http://127.0.0.1:8000/mcp";
+const APP_ORIGIN = globalThis.location?.origin ?? "http://127.0.0.1:5180";
+export const MCP_URL = import.meta.env.VITE_MCP_URL ?? new URL("/mcp", APP_ORIGIN).href;
 
 export const CLIENT_INFO = Object.freeze({ name: "speech-resilient-alexa-web", version: "0.1.0" });
 

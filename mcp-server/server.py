@@ -17,6 +17,7 @@ from messages import ToolDescription
 from notify import HelperLinker, create_bot, create_notifier
 from pacing import Pacing
 from people import Guard, Sessions, SessionVerifier, create_people_routes
+from reminders import ReminderEmail
 from speech import PollySynthesizer, create_speak_endpoint
 from tools.ask_for_help import ask_for_help as send_help
 from tools.cancel_request import cancel_request as cancel
@@ -29,6 +30,13 @@ from transcription import create_transcribe_endpoint
 
 settings = get_settings()
 bot = create_bot(settings)
+reminder_email = ReminderEmail(
+    settings.reminder.region,
+    settings.reminder.email_topic_prefix,
+    settings.reminder.scheduler_role_arn,
+    settings.reminder.timezone,
+    settings.reminder.schedule_group,
+)
 
 
 def open_store() -> SqliteMemoryStore:
@@ -57,6 +65,7 @@ async def resources(server: FastMCP):
         "notifier": create_notifier(bot),
         "geocoder": create_geocoder(settings),
         "pacing": Pacing(store, settings.pause),
+        "reminder_email": reminder_email if settings.llm.provider.value != "mock" else None,
     }
     stop.set()
     # A summary may still be being written; closing the store under it can crash SQLite.
@@ -112,7 +121,13 @@ def understand_speech(heard: str, ctx: Context, pauses_ms: list[int] | None = No
 
 @mcp.tool(description=ToolDescription.DO_CONFIRMED_REQUEST)
 def do_confirmed_request(pending_id: str, ctx: Context) -> dict:
-    return do_confirmed(ctx.lifespan_context["store"], settings.memory.company_id, caller(), pending_id)
+    return do_confirmed(
+        ctx.lifespan_context["store"],
+        settings.memory.company_id,
+        caller(),
+        pending_id,
+        ctx.lifespan_context["reminder_email"],
+    )
 
 
 @mcp.tool(description=ToolDescription.RESUME_UNFINISHED)
@@ -162,7 +177,15 @@ def create_app():
         Route(settings.polly.path, guard.require(lambda request, _: speak(request)), methods=["POST"])
     )
     app.router.routes.extend(
-        create_people_routes(people, sessions, guard, bot, settings.memory.company_id, Pacing(people, settings.pause))
+        create_people_routes(
+            people,
+            sessions,
+            guard,
+            bot,
+            settings.memory.company_id,
+            Pacing(people, settings.pause),
+            reminder_email,
+        )
     )
     return app
 

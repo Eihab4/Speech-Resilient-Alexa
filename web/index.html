@@ -93,10 +93,16 @@
 
         <form id="profile-form">
           <label>
+            Reminder email
+            <input id="profile-email" type="email" autocomplete="email" placeholder="you@example.com" />
+            <small>Saving sends a confirmation email so we can verify this address for reminder setup.</small>
+          </label>
+          <p id="reminder-email-status" class="hint" aria-live="polite"></p>
+          <button type="submit">Save email and address</button>
+          <label>
             Home address
             <input id="profile-address" autocomplete="off" placeholder="Sent when the device gives no location" />
           </label>
-          <button type="submit">Save</button>
         </form>
 
         <form id="helper-form">

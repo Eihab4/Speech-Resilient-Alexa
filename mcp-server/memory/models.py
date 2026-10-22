@@ -45,6 +45,8 @@ class DayTries(BaseModel):
 class Profile(BaseModel):
     name: str
     home_address: str | None = None
+    reminder_email: str | None = None
+    reminder_topic_arn: str | None = None
 
 
 class Helper(BaseModel):

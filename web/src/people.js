@@ -5,8 +5,8 @@ import { json, send, signedIn } from "./http.js";
 
 export const loadProfile = (token) => send(PROFILE_URL, signedIn(token));
 
-export const saveProfile = (token, name, homeAddress) =>
-  send(PROFILE_URL, signedIn(token, json("PUT", { name, home_address: homeAddress })));
+export const saveProfile = (token, name, homeAddress, reminderEmail) =>
+  send(PROFILE_URL, signedIn(token, json("PUT", { name, home_address: homeAddress, reminder_email: reminderEmail })));
 
 export const listHelpers = (token) => send(HELPERS_URL, signedIn(token));
 

@@ -55,6 +55,8 @@ CREATE TABLE IF NOT EXISTS profiles (
     user_id INTEGER PRIMARY KEY REFERENCES users(id),
     name TEXT NOT NULL,
     home_address TEXT,
+    reminder_email TEXT,
+    reminder_topic_arn TEXT,
     updated_at TEXT NOT NULL
 );
 

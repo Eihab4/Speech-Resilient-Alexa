@@ -54,7 +54,8 @@ export async function takeTurn(token, heard, pausesMs = []) {
   }
 
   if (decision.next_move === NextMove.DONE) {
-    return { ...decision, ...(await callTool(Tool.DO_CONFIRMED_REQUEST, { pending_id: decision.pending_id }, token)) };
+    const action = await callTool(Tool.DO_CONFIRMED_REQUEST, { pending_id: decision.pending_id }, token);
+    return { ...decision, ...action, ...(action.done ? {} : { next_move: NextMove.ASK }) };
   }
 
   if (decision.next_move === NextMove.HELP) {

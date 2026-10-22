@@ -121,6 +121,16 @@ class LocationSettings(Section):
     region: str = Field(default="us-east-1", validation_alias="AWS_REGION")
 
 
+class ReminderSettings(Section):
+    model_config = SettingsConfigDict(env_prefix="REMINDER_")
+
+    region: str = Field(default="us-east-1", validation_alias="AWS_REGION")
+    email_topic_prefix: str = "speech-alexa-reminder"
+    scheduler_role_arn: str = ""
+    timezone: str = "Africa/Cairo"
+    schedule_group: str = "default"
+
+
 class BedrockSettings(Section):
     model_config = SettingsConfigDict(env_prefix="BEDROCK_")
 
@@ -183,6 +193,7 @@ class Settings(BaseModel):
     pause: PauseSettings = Field(default_factory=PauseSettings)
     telegram: TelegramSettings = Field(default_factory=TelegramSettings)
     location: LocationSettings = Field(default_factory=LocationSettings)
+    reminder: ReminderSettings = Field(default_factory=ReminderSettings)
     bedrock: BedrockSettings = Field(default_factory=BedrockSettings)
     openrouter: OpenRouterSettings = Field(default_factory=OpenRouterSettings)
     groq: GroqSettings = Field(default_factory=GroqSettings)
