@@ -58,6 +58,25 @@ def test_any_kind_of_yes_counts(server, word):
     assert say(url, word)["next_move"] == NextMove.DONE
 
 
+@pytest.mark.parametrize("word", ["um, yes", "Uh, yes.", "hmm... yep", "yes, um"])
+def test_hesitation_fillers_do_not_hide_a_clear_yes(server, word):
+    url = server()
+    say(url, "call mom")
+
+    assert say(url, word)["next_move"] == NextMove.DONE
+
+
+def test_the_model_cannot_complete_a_request_without_a_clear_yes(server):
+    url = server()
+    say(url, "call mom")
+
+    uncertain = say(url, "maybe")
+
+    assert uncertain["next_move"] == NextMove.CONFIRM
+    assert uncertain["say"] == "Should I call mom?"
+    assert call(url, "do_confirmed_request", user_id="user1", pending_id=uncertain["pending_id"])["done"] is False
+
+
 def test_nothing_happens_before_a_yes(server, db_path):
     url = server()
     say(url, "call mom")

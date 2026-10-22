@@ -4,7 +4,16 @@ from messages.logs import LogMessage
 from messages.prompts import REQUEST_ENDINGS, Prompt
 from messages.replies import ACTION_RESULTS, GENERIC_ACTION_RESULT, Reply
 from messages.tools import ToolDescription
-from messages.vocabulary import HELP_WORDS, NO_WORDS, SOS_PHRASES, STOP_WORDS, YES_WORDS
+from messages.vocabulary import (
+    HELP_WORDS,
+    NO_WORDS,
+    PUNCTUATION_TO_SPACE,
+    REPEATED_YES_WORDS,
+    RESPONSE_FILLERS,
+    SOS_PHRASES,
+    STOP_WORDS,
+    YES_WORDS,
+)
 
 __all__ = [
     "ACTION_RESULTS",
@@ -12,7 +21,10 @@ __all__ = [
     "HELP_WORDS",
     "MAP_URL",
     "NO_WORDS",
+    "PUNCTUATION_TO_SPACE",
+    "REPEATED_YES_WORDS",
     "REQUEST_ENDINGS",
+    "RESPONSE_FILLERS",
     "SOS_PHRASES",
     "STOP_WORDS",
     "TELEGRAM_LINK",

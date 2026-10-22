@@ -6,7 +6,12 @@ from enums import Intent
 class Reply(StrEnum):
     STILL_LISTENING = "Take your time. I'm still listening."
     CONFIRMED = "Okay."
+    CONFIRM_REQUEST = "Should I {request}?"
+    CONFIRM_GENERIC = "Did I get that right?"
     WHAT_TO_CHANGE = "Okay, what should I change?"
+    SAY_MORE = "Could you say a little more?"
+    SWITCH_REQUEST = "Should I stop {current} and {new} instead?"
+    SWITCH_GENERIC = "Should I stop this request and start the new one instead?"
     NEEDS_YES = "I need a yes first."
     NOTHING_PENDING = "There's nothing waiting right now."
     CANCELLED = "Okay, cancelled."
