@@ -74,10 +74,17 @@ Three AWS services run in the product, each behind the MCP server so AWS keys ne
 | **Amazon Transcribe** (streaming) | Turns the microphone into text while the person talks. The page streams 16 kHz audio to the server's `/transcribe` WebSocket, the server relays it to Transcribe and sends each finished piece back, one turn per pause. | `mcp-server/transcription/stream.py`, `web/src/transcribe.js` | `AmazonTranscribeFullAccess` |
 | **Amazon Polly** (neural voice) | Alexa's voice. Every reply goes to the server's `/speak` route and comes back as MP3. | `mcp-server/speech/polly.py`, `web/src/polly.js` | `AmazonPollyFullAccess` |
 | **Amazon Location Service** (`ReverseGeocode`) | Turns the coordinates of an emergency alert into a street address, so a helper reads "Where: 2 Mohamed Fahmy El Mahdar Street, Cairo" next to the map link. One try, 2 second timeout; if it fails, the alert still goes. | `mcp-server/location/geocoder.py`, used by `mcp-server/tools/emergency_sos.py` | inline policy: `geo-places:ReverseGeocode` |
+| **EventBridge Scheduler + SNS** | Sends a real email reminder at the requested time. Each account gets a separate SNS topic; the person must confirm their email subscription before reminders can be scheduled. | `mcp-server/reminders/`, `mcp-server/tools/do_confirmed_request.py` | `sns:CreateTopic`, `sns:Subscribe`, `sns:ListSubscriptionsByTopic`, `scheduler:CreateSchedule`, and `iam:PassRole`; scheduler role needs `sns:Publish` on the reminder topics |
 
 Together they form one pipeline: speech in through **Transcribe**, understood by the MCP tools, the answer out through **Polly**, and in an emergency the place through **Location**.
 
 **Amazon Bedrock** is wired in as a brain (`LLM_PROVIDER=bedrock`, Nova Lite through the Converse API, `mcp-server/brain/llm/bedrock.py`), but our account can't call any model yet, so the demo uses Groq.
+
+### Real email reminders
+
+The reminder address is saved to the signed-in person's profile. Saving it creates a private SNS topic and sends the SNS confirmation email. The person must confirm that email before a reminder can be scheduled. After they say “yes”, EventBridge Scheduler publishes the reminder to that person's topic at the exact date and time returned by the model. The app uses `REMINDER_TIMEZONE` (default `Africa/Cairo`).
+
+Set up an EventBridge Scheduler execution role with `sns:Publish` limited to topics named `speech-alexa-reminder-*`, then set its ARN in `REMINDER_SCHEDULER_ROLE_ARN`. The credentials used by the MCP server also need to create and subscribe to those SNS topics, create schedules in the `default` schedule group, and pass only that execution role. See [the AWS reminder setup guide](docs/aws-reminders.md) for the steps. Calls and text messages remain simulated actions.
 
 ## Run it
 

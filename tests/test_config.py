@@ -78,6 +78,7 @@ def test_env_example_lists_every_setting():
         "pause": "PAUSE_",
         "telegram": "TELEGRAM_",
         "location": "LOCATION_",
+        "reminder": "REMINDER_",
         "bedrock": "BEDROCK_",
         "openrouter": "OPENROUTER_",
         "groq": "GROQ_",
@@ -90,6 +91,7 @@ def test_env_example_lists_every_setting():
         ("transcribe", "region"): "AWS_REGION",
         ("polly", "region"): "AWS_REGION",
         ("location", "region"): "AWS_REGION",
+        ("reminder", "region"): "AWS_REGION",
     }
 
     for section, fields in sections.items():

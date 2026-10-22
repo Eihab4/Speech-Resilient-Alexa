@@ -42,7 +42,7 @@ test("the text goes to the server's speak route and the audio is played", async 
 
   await vi.waitFor(() => expect(players).toHaveLength(1));
   expect(requests).toEqual([
-    { url: "http://127.0.0.1:8000/speak", body: { text: "Mm-hm, go on." }, authorization: "Bearer session-token" },
+    { url: "http://127.0.0.1:5180/speak", body: { text: "Mm-hm, go on." }, authorization: "Bearer session-token" },
   ]);
   expect(players[0].src).toMatch(/^blob:/);
 

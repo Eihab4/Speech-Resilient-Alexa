@@ -15,6 +15,7 @@ from pacing import Pacing
 from people.guard import Guard, bearer
 from people.passwords import check_password, hash_password
 from people.sessions import Sessions
+from reminders import ReminderEmail, ReminderEmailError
 
 logger = logging.getLogger(__name__)
 
@@ -42,6 +43,7 @@ class SignInBody(Body):
 class ProfileBody(Body):
     name: str = ""
     home_address: str | None = None
+    reminder_email: str | None = None
 
 
 class HelperBody(Body):
@@ -61,7 +63,13 @@ async def _read[T: Body](request: Request, model: type[T]) -> T:
 
 
 def create_people_routes(
-    store: MemoryStore, sessions: Sessions, guard: Guard, bot: TelegramBot | None, company_id: str, pacing: Pacing
+    store: MemoryStore,
+    sessions: Sessions,
+    guard: Guard,
+    bot: TelegramBot | None,
+    company_id: str,
+    pacing: Pacing,
+    reminder_email_service: ReminderEmail | None = None,
 ) -> list[Route]:
     """The page's own account and setup, done on a screen, not by voice: signing in, the person's profile, and
     who gets their emergency alerts. Plain routes, not MCP tools, so they stay out of the tools an AI host
@@ -124,17 +132,58 @@ def create_people_routes(
         link = None if helper.linked or not username else TELEGRAM_LINK.format(username=username, code=helper.link_code)
         return {"id": helper.id, "name": helper.name, "linked": helper.linked, "link": link}
 
+    async def profile_response(profile: Profile) -> JSONResponse:
+        result = profile.model_dump(exclude={"reminder_topic_arn"})
+        if not profile.reminder_email:
+            result["reminder_email_status"] = "not_set"
+        elif not reminder_email_service:
+            result["reminder_email_status"] = "unavailable"
+        elif profile.reminder_topic_arn:
+            try:
+                confirmed = await run_in_threadpool(
+                    reminder_email_service.confirmed, profile.reminder_topic_arn, profile.reminder_email
+                )
+                result["reminder_email_status"] = "confirmed" if confirmed else "pending_confirmation"
+            except ReminderEmailError:
+                result["reminder_email_status"] = "unavailable"
+        else:
+            result["reminder_email_status"] = "pending_confirmation"
+        return JSONResponse(result)
+
     async def get_profile(request: Request, username: str) -> Response:
         profile = store.profile(company_id, username) or Profile(name="")
-        return JSONResponse(profile.model_dump())
+        return await profile_response(profile)
 
     async def save_profile(request: Request, username: str) -> Response:
         body = await _read(request, ProfileBody)
         if not body.name:
             return _error(ErrorMessage.NAME_MISSING, HTTPStatus.BAD_REQUEST)
-        profile = Profile(name=body.name, home_address=body.home_address or None)
+        email_address = body.reminder_email.strip().lower() if body.reminder_email else None
+        if email_address and not re.fullmatch(r"[^\s@]+@[^\s@]+\.[^\s@]+", email_address):
+            return JSONResponse({"error": "Please enter a valid reminder email."}, status_code=HTTPStatus.BAD_REQUEST)
+        earlier = store.profile(company_id, username)
+        topic_arn = earlier.reminder_topic_arn if earlier and earlier.reminder_email == email_address else None
+        if email_address and not topic_arn:
+            if reminder_email_service:
+                try:
+                    topic_arn = await run_in_threadpool(
+                        reminder_email_service.subscribe, company_id, username, email_address
+                    )
+                except ReminderEmailError as error:
+                    return JSONResponse({"error": str(error)}, status_code=HTTPStatus.SERVICE_UNAVAILABLE)
+            else:
+                return JSONResponse(
+                    {"error": "Email verification is not configured. Please try again later."},
+                    status_code=HTTPStatus.SERVICE_UNAVAILABLE,
+                )
+        profile = Profile(
+            name=body.name,
+            home_address=body.home_address or None,
+            reminder_email=email_address,
+            reminder_topic_arn=topic_arn,
+        )
         store.save_profile(company_id, username, profile)
-        return JSONResponse(profile.model_dump())
+        return await profile_response(profile)
 
     async def list_helpers(request: Request, username: str) -> Response:
         bot_username = await bot_name()

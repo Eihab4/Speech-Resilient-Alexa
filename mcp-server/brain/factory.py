@@ -21,7 +21,7 @@ def create_brain(settings: Settings | None = None) -> Brain:
     config = settings or get_settings()
     if config.llm.provider == LlmProvider.MOCK:
         return MockBrain(config)
-    return LlmBrain(create_client(config))
+    return LlmBrain(create_client(config), config.reminder.timezone)
 
 
 def create_summarizer(settings: Settings | None = None) -> Summarizer:

@@ -24,6 +24,11 @@ from diagrams.aws.general import (
     TraditionalServer,
     User,
 )
+from diagrams.aws.integration import (
+    EventbridgeScheduler,
+    SimpleNotificationServiceSns,
+    SimpleNotificationServiceSnsEmailNotification,
+)
 from diagrams.aws.ml import Bedrock, MachineLearning, Polly, Transcribe
 from diagrams.aws.security import IAM
 from diagrams.custom import Custom
@@ -67,7 +72,13 @@ def draw(output: Path, logos: bool) -> None:
             polly = Polly(below("Amazon Polly"))
             bedrock = Bedrock(below("Amazon Bedrock"))
             location = General(below("Amazon Location"))
-            IAM(below("IAM"))
+            scheduler = EventbridgeScheduler(below("EventBridge Scheduler"))
+            reminder_topic = SimpleNotificationServiceSns(below("Reminder SNS topic"))
+            email_delivery = SimpleNotificationServiceSnsEmailNotification(below("SNS email delivery"))
+            scheduler_role = IAM(below("Scheduler publish role"))
+            IAM(below("IAM permissions"))
+
+        reminder_email = User(below("Verified email inbox"))
 
         with Cluster("Hosted LLMs"):
             openrouter = (
@@ -95,6 +106,10 @@ def draw(output: Path, logos: bool) -> None:
         tools >> Edge(label="address") >> location
         tools >> Edge(label="SOS alert") >> telegram
         telegram >> phone
+        tools >> Edge(label="create one-time schedule") >> scheduler
+        scheduler >> Edge(label="assume role") >> scheduler_role
+        scheduler_role >> Edge(label="sns:Publish") >> reminder_topic
+        reminder_topic >> email_delivery >> reminder_email
 
 
 if __name__ == "__main__":
